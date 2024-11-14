@@ -3,54 +3,105 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from numpy import isclose
 import math
-import itertools
-from multiprocessing import Pool
-from multiprocessing import cpu_count
+
+from optimization_functions import *
+from optimizers import *
 
 import plotly.express as px
 import plotly.graph_objects as go
 
-# Define the class that contains the objective computation function
-class OptimizationFunction:
-    def __init__(self, data=None, similarity_matrix=None, gamma=None):
-        self.data = data
-        self.similarity_matrix = similarity_matrix
-        self.gamma = gamma
-        
-    def objective_computation(self, section):
-        approx_error = 0
-        for idx in section:
-            degree_idx = np.sum(self.similarity_matrix[idx])
-            xi_reconstruction = np.sum([self.similarity_matrix[idx][y] * np.asarray(self.data.loc[[y]])[0] 
-                                        for y in range(len(self.similarity_matrix[idx])) if idx != y], 0)            
+class tests():
+    def __init__(self):
+        self.surface_fcn = Surface()
 
-            if degree_idx != 0 and not isclose(degree_idx, 0, abs_tol=1e-100):
-                xi_reconstruction /= degree_idx
-                xi_reconstruction = xi_reconstruction[0]
-            else:
-                xi_reconstruction = np.zeros(2)
+    def pso_test(self):
+        pso = ParticleSwarmOptimizer(self.surface_fcn.ackley, self.surface_fcn.ackley_gradient, 30, 3, 10) 
+        minima, lowest_val, paths, values = pso.optimize()
+        self.swarm_plot(minima, lowest_val, paths, values)
 
-            # Calculate the error (difference between reconstruction and original data)
-            approx_error += np.sum((np.asarray(self.data.loc[[idx]])[0] - xi_reconstruction)**2)
-        return approx_error
+    def sba_test(self):
+        sba = SwarmBasedAnnealingOptimizer(self.surface_fcn.ackley, self.surface_fcn.ackley_gradient, 100, 3, 200)
+        minima, lowest_val, paths, values = sba.optimize()
+        print("Best Position: ", minima)
+        print("Minima: ", lowest_val)
+        #print(values)
+        self.swarm_plot(minima, lowest_val, paths, values)
 
-    def objective_function(self, adj_matr):
-        self.similarity_matrix = adj_matr
-        split_data = self.split(range(len(adj_matr[0])), cpu_count())
-        with Pool(processes=cpu_count()) as pool:
-            errors = [pool.apply_async(self.objective_computation, (section, )) \
-                                                                 for section in split_data]
+    def swarm_plot(self, minima, lowest_val, paths, values, ):
+        x = np.linspace(-500, 500, 1000)
+        y = np.linspace(-1000, 50, 1000)
+        X, Y = np.meshgrid(x, y)
+        Z = self.surface_fcn.ackley(X, Y, 0)  # For simplicity, use z=0 for surface visualization
 
-            error = [error.get() for error in errors]
-        return np.sum(error)
+        # Create a 3D surface plot using Plotly
+        fig = go.Figure()
 
-    def split(self, a, n):
-        k, m = divmod(len(a), n)
-        return [a[i*k+min(i,m):(i+1)*k+min(i+1,m)] for i in range(n)]
+        # Add surface plot
+        fig.add_trace(go.Surface(
+            z=Z,
+            x=X,
+            y=Y,
+            colorscale='Viridis',
+            opacity=0.6,
+            showscale=False
+        ))
+        '''
+        color_scale = 'Jet'  # You can change this color scale
+        for i, path in enumerate(paths):
+            path = np.array(path)
+            num_steps = path.shape[0]
 
+            # Assign colors to each path step based on their iteration (steps)
+            colors = np.linspace(0, 1, num_steps)
+            fig.add_trace(go.Scatter3d(
+                x=path[:, 0], y=path[:, 1], z=path[:, 2],
+                mode='markers+lines',
+                marker=dict(
+                    size=5,
+                    color=colors,  # Color the path steps from start to end
+                    colorscale=color_scale,  # Define color scale
+                    cmin=0, cmax=1,
+                    line=dict(width=2)
+                ),
+                line=dict(width=4, colorscale=color_scale),  # Thicker lines
+                name=f'Agent {i} Path'
+            ))
+        '''
+        # Highlight the minimum found
+        fig.add_trace(go.Scatter3d(
+            x=[minima[0]], y=[minima[1]], z=[minima[2]],
+            mode='markers',
+            marker=dict(
+                size=10, color='red', symbol='diamond', line=dict(width=2, color='black')
+            ),
+            name='Global Minimum'
+        ))
 
-def isclose(a, b, rel_tol=1e-09, abs_tol=0.0):
-    return abs(a-b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol)
+        fig.update_layout(
+            title="3D Particle Swarm Optimization Paths",
+            scene=dict(
+                xaxis_title='X Position',
+                yaxis_title='Y Position',
+                zaxis_title='Z Position'
+            ),
+            margin=dict(l=0, r=0, b=0, t=40),
+            showlegend=True
+        )
+
+        # Show the plot
+        fig.show()
+
+        plt.figure(figsize=(8, 6))
+        for value in values:
+            plt.plot(value, label="Global Best Fitness")
+        plt.title("Global Best Fitness Over Iterations")
+        plt.xlim(0, len(values[0]))
+        plt.xlabel("Iteration")
+        plt.ylabel("Fitness Value")
+        plt.grid(True)
+        plt.legend()
+        plt.show()
+
 
 def plot_error_surface(aew_obj):
 
@@ -99,23 +150,7 @@ def plot_error_surface(aew_obj):
 
     fig.show()
 
-    #print(len(x))
-    #print(len(y))
-
-    #print(len(Z))
-
-    # Create a surface plot
-    #fig = plt.figure(figsize=(10, 7))
-    #ax = fig.add_subplot(111, projection='3d')
-
-    # Plot a surface
-    #ax.plot_surface(X, Y, Z, cmap='viridis')
-
-    # Add labels and title
-    #ax.set_xlabel('X Label')
-    #ax.set_ylabel('Y Label')
-    #ax.set_zlabel('Objective Value')
-    #ax.set_title('Surface of the Objective Function')
-
-    #plt.show()
-
+if __name__ == "__main__":
+    test = tests()
+    #test.pso_test()
+    test.sba_test()
