@@ -202,23 +202,20 @@ class SwarmBasedAnnealingOptimizer:
         # Update the velocity of each particle
         fitness = self.surface_function(self.positions[particle_idx][0], self.positions[particle_idx][1], self.positions[particle_idx][2])
         new_mass = self.masses[particle_idx] - (self.h*(fitness - self.provisional_minimum)*self.masses[particle_idx])
-        
-        return max(new_mass, 1e-6)
+        new_mass = np.clip(new_mass, 1e-6, 1)
+        return new_mass
+        #return max(new_mass, 1e-6)
 
     def update_position(self, particle_idx, eta, iteration):
         
         gradient = self.gradient_function(self.positions[particle_idx][0], self.positions[particle_idx][1], self.positions[particle_idx][2])
-    
-        #play with an exponentially decaying 
-        #new_position = self.positions[particle_idx] - (self.h*gradient*self.personal_best_fitness[particle_idx]) + (np.sqrt(2*self.h*np.exp(-.05*iteration)))*eta
-
-        #new_position = self.positions[particle_idx] - (self.h*gradient) + (np.sqrt(2*self.h*np.std(self.masses))* eta)
-       
+        
         #inv_mass = (1/(self.masses[particle_idx]+1e-5))
         inv_mass = np.mean(self.masses)
-        
+        #print("Mass: ", inv_mass) 
         self.positions = np.clip(self.positions, -1e300, 1e-300)
         new_position = self.positions[particle_idx] - (self.h*gradient*self.surface_function(self.positions[particle_idx][0], self.positions[particle_idx][1], self.positions[particle_idx][2])) + (np.sqrt(2*self.h*inv_mass)*eta)
+        #self.positions = np.clip(self.positions, -1e300, 1e-300)
         return new_position
 
     def provisional_min_computation(self):

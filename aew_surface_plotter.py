@@ -28,8 +28,8 @@ class tests():
         self.swarm_plot(minima, lowest_val, paths, values)
 
     def swarm_plot(self, minima, lowest_val, paths, values, ):
-        x = np.linspace(-500, 500, 1000)
-        y = np.linspace(-1000, 50, 1000)
+        x = np.linspace(-50, 50, 1000)
+        y = np.linspace(-600, 50, 1000)
         X, Y = np.meshgrid(x, y)
         Z = self.surface_fcn.ackley(X, Y, 0)  # For simplicity, use z=0 for surface visualization
 
