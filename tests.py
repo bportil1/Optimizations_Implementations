@@ -27,6 +27,64 @@ class tests():
         #print(values)
         self.swarm_plot(minima, lowest_val, paths, values)
 
+    def hdffsa_test(self):
+        hdffsa = HdFireflySimulatedAnnealingOptimizer(self.surface_fcn.ackley, )
+
+
+    def annealing_plot():
+        x = np.linspace(-50, 50, 1000)
+        y = np.linspace(-600, 50, 1000)
+        X, Y = np.meshgrid(x, y)
+        Z = self.surface_fcn.ackley(X, Y, 0)  # For simplicity, use z=0 for surface visualization
+
+        # Create a 3D surface plot using Plotly
+        fig = go.Figure()
+
+        # Add surface plot
+        fig.add_trace(go.Surface(
+            z=Z,
+            x=X,
+            y=Y,
+            colorscale='Viridis',
+            opacity=0.6,
+            showscale=False
+        ))
+
+        # Highlight the minimum found
+        fig.add_trace(go.Scatter3d(
+            x=[minima[0]], y=[minima[1]], z=[minima[2]],
+            mode='markers',
+            marker=dict(
+                size=10, color='red', symbol='diamond', line=dict(width=2, color='black')
+            ),
+            name='Global Minimum'
+        ))
+
+        fig.update_layout(
+            title="3D Particle Swarm Optimization Paths",
+            scene=dict(
+                xaxis_title='X Position',
+                yaxis_title='Y Position',
+                zaxis_title='Z Position'
+            ),
+            margin=dict(l=0, r=0, b=0, t=40),
+            showlegend=True
+        )
+
+        # Show the plot
+        fig.show()
+
+        plt.figure(figsize=(8, 6))
+        for value in values:
+            plt.plot(value, label="Global Best Fitness")
+        plt.title("Global Best Fitness Over Iterations")
+        plt.xlim(0, len(values[0]))
+        plt.xlabel("Iteration")
+        plt.ylabel("Fitness Value")
+        plt.grid(True)
+        plt.legend()
+        plt.show()
+
     def swarm_plot(self, minima, lowest_val, paths, values, ):
         x = np.linspace(-50, 50, 1000)
         y = np.linspace(-600, 50, 1000)
