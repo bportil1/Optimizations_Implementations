@@ -46,9 +46,9 @@ class AdamOptimizer:
         return self.path
 
 class SimulatedAnnealingOptimizer:
-    def __init__(self, surface_function, curr_pt, max_iterations=1000, temperature=10, min_temp=.001, cooling_rate=.9):
+    def __init__(self, surface_function, curr_pt=None, max_iterations=1000, temperature=5, min_temp=.001, cooling_rate=.7):
         self.surface_function = surface_function
-        self.curr_pt = curr_pt
+        self.curr_pt = self.get_initial_pt(curr_pt)
 
         self.temperature = temperature
         self.min_temp = min_temp
@@ -56,9 +56,18 @@ class SimulatedAnnealingOptimizer:
         self.max_iterations = max_iterations
         self.path = []
 
+    def get_initial_pt(self, curr_pt):
+        if isinstance(curr_pt, np.ndarray):
+            curr_pt = [0,0,0]
+        else:
+            curr_pt = curr_pt
+        
+        return curr_pt
+
     def optimize(self):
 
         print("Initial Point: ", self.curr_pt)
+        update_ctr = 0
         curr_energy = self.surface_function(self.curr_pt[0], self.curr_pt[1], self.curr_pt[2])
         for idx in range(self.max_iterations):
             new_position = self.solution_transition(self.curr_pt)
@@ -69,17 +78,19 @@ class SimulatedAnnealingOptimizer:
                 self.curr_pt = new_position
                 curr_energy = new_energy
                 self.path.append((self.curr_pt[0], self.curr_pt[1], self.curr_pt[2], new_energy))
-
+                update_ctr = 0
             elif np.random.rand() < alpha:
                 self.curr_pt = new_position
                 curr_energy = new_energy
                 self.path.append((self.curr_pt[0], self.curr_pt[1], self.curr_pt[2], new_energy))
-
+                update_ctr = 0
+            else:
+                update_ctr += 1
             self.temperature *= self.cooling_rate
 
             print("Current Error: ", curr_energy)
             print("Current Temperature: ", self.temperature)
-            if self.temperature < self.min_temp:
+            if self.temperature < self.min_temp or update_ctr == 20:
                 break
 
         return  self.curr_pt, curr_energy, self.path
@@ -132,6 +143,82 @@ class ParticleSwarmOptimizer:
         new_position = self.positions[particle_idx] + self.velocities[particle_idx]
         return new_position
 
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
+        self.c2 = c2                
     def optimize(self):
         for iteration in range(self.max_iter):
             for i in range(self.num_particles):
@@ -342,7 +429,8 @@ class HdFireflySimulatedAnnealingOptimizer:
         nondecreasing_alpha_counter = 0
         min_position = None
         min_fitness = float('inf')
-        while maturity_condition:
+        hdfa_ctr = 0
+        while maturity_condition and hdfa_ctr < self.hdfa_iterations:
             print("in while")
             for idx1 in range(self.pop_test):
                 for idx2 in range(self.pop_test):
@@ -379,7 +467,7 @@ class HdFireflySimulatedAnnealingOptimizer:
                 maturity_condition = False
 
             avg_alpha = new_alpha
-
+            hdfa_ctr += 1
         #print(in_min_region, " ", min_region, " ", min_reg_fitness)
 
         sa = SimulatedAnnealingOptimizer(self.objective_computation, min_position)

@@ -14,13 +14,23 @@ class tests():
     def __init__(self):
         self.surface_fcn = Surface()
 
+    def sa_test(self):
+        sa = SimulatedAnnealingOptimizer(self.surface_fcn.rastrigin )
+        minima, lowest_val, path = sa.optimize()
+        
+        print("Best Postition: ", minima)
+        print("Minima: ", lowest_val)
+
+        self.annealing_plot(minima, lowest_val, path)
+        
+
     def pso_test(self):
         pso = ParticleSwarmOptimizer(self.surface_fcn.ackley, self.surface_fcn.ackley_gradient, 30, 3, 10) 
         minima, lowest_val, paths, values = pso.optimize()
         self.swarm_plot(minima, lowest_val, paths, values)
 
     def sba_test(self):
-        sba = SwarmBasedAnnealingOptimizer(self.surface_fcn.ackley, self.surface_fcn.ackley_gradient, 100, 3, 200)
+        sba = SwarmBasedAnnealingOptimizer(self.surface_fcn.booth, self.surface_fcn.booth_gradient, 100, 3, 200)
         minima, lowest_val, paths, values = sba.optimize()
         print("Best Position: ", minima)
         print("Minima: ", lowest_val)
@@ -28,8 +38,11 @@ class tests():
         self.swarm_plot(minima, lowest_val, paths, values)
 
     def hdffsa_test(self):
-        hdffsa = HdFireflySimulatedAnnealingOptimizer(self.surface_fcn.ackley, 3, 30, 10)
+        hdffsa = HdFireflySimulatedAnnealingOptimizer(self.surface_fcn.griewank, 3, 30, 10)
         minima, lowest_val, path = hdffsa.optimize()
+
+        print("Best Position: ", minima)
+        print("Minima :", lowest_val)
 
         self.annealing_plot(minima, lowest_val, path)
 
@@ -37,7 +50,7 @@ class tests():
         x = np.linspace(-50, 50, 1000)
         y = np.linspace(-600, 50, 1000)
         X, Y = np.meshgrid(x, y)
-        Z = self.surface_fcn.ackley(X, Y, 0)  # For simplicity, use z=0 for surface visualization
+        Z = self.surface_fcn.griewank(X, Y, 0)  # For simplicity, use z=0 for surface visualization
 
         # Create a 3D surface plot using Plotly
         fig = go.Figure()
@@ -63,7 +76,7 @@ class tests():
         ))
 
         fig.update_layout(
-            title="3D Particle Swarm Optimization Paths",
+            title="3D Simulated Annealing",
             scene=dict(
                 xaxis_title='X Position',
                 yaxis_title='Y Position',
@@ -77,10 +90,10 @@ class tests():
         fig.show()
 
     def swarm_plot(self, minima, lowest_val, paths, values, ):
-        x = np.linspace(-50, 50, 1000)
-        y = np.linspace(-600, 50, 1000)
+        x = np.linspace(-100, 100, 1000)
+        y = np.linspace(-100, 100, 1000)
         X, Y = np.meshgrid(x, y)
-        Z = self.surface_fcn.ackley(X, Y, 0)  # For simplicity, use z=0 for surface visualization
+        Z = self.surface_fcn.booth(X, Y, 0)  # For simplicity, use z=0 for surface visualization
 
         # Create a 3D surface plot using Plotly
         fig = go.Figure()
@@ -150,57 +163,10 @@ class tests():
         plt.grid(True)
         plt.legend()
         plt.show()
-
-
-def plot_error_surface(aew_obj):
-
-    # Create an instance of the optimization function
-    opt_function = OptimizationFunction(data = aew_obj.data, similarity_matrix = aew_obj.similarity_matrix)
-    
-    values = np.arange(-10, 10.1, .10)
-
-    sim_gammas = np.asarray([list(pair) for pair in itertools.product(values, repeat=2)])
-
-    objective_values = np.zeros(sim_gammas.shape[0])
-
-    for idx, gamma in enumerate(sim_gammas):
-        print("Gamma: ", gamma)
-        curr_adj_matr = aew_obj.generate_edge_weights(gamma)
-
-        #objective_values.append(opt_function.objective_function(curr_adj_matr))
-        objective_values[idx] = opt_function.objective_function(curr_adj_matr)
-
-    # Plotting the surface
-    X = np.unique(sim_gammas[:,0]) #np.linspace(0, 10, 10)  # X-axis points (random for illustration)
-    Y = np.unique(sim_gammas[:,1])  #np.linspace(0, 10, 10)  # Y-axis points (random for illustration)
-
-    Z = np.zeros((len(X), len(Y)))  
-
-    for gamma, obj_val in zip(sim_gammas, objective_values):
-        x_idx = np.where(X == gamma[0])[0][0]
-        y_idx = np.where(Y == gamma[1])[0][0]
-        Z[x_idx, y_idx] = obj_val
-
-    X, Y = np.meshgrid(X, Y)
-
-    fig = go.Figure(data=[go.Surface(z=Z, x=X, y=Y)])
-
-    fig.update_traces(contours_z=dict(show=True, usecolormap=True,
-                                      highlightcolor='limegreen', project_z=True))
-
-    fig.update_layout(
-            title = 'Error Surface',
-            scene=dict(
-            xaxis=dict(range=[X.min(), X.max()]),
-            yaxis=dict(range=[Y.min(), Y.max()]),
-            zaxis=dict(title="Error", range=[Z.min(), Z.max()])
-            )
-    )
-
-    fig.show()
-
+            
 if __name__ == "__main__":
     test = tests()
+    #test.sa_test()
     #test.pso_test()
-    #test.sba_test()
-    test.hdffsa_test()
+    test.sba_test()
+    #test.hdffsa_test()

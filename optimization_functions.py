@@ -61,9 +61,9 @@ class Surface:
 
     # Rosenbrock (Banana) Function and Gradient (3D version)
     def rosenbrock(self, x, y, z, a=1, b=100):
-        #x = np.clip(x, -500, 500)
-        #y = np.clip(y, -500, 500)
-        #z = np.clip(z, -500, 500)
+        x = np.clip(x, -500, 500)
+        y = np.clip(y, -500, 500)
+        z = np.clip(z, -500, 500)
         value = (a - x)**2 + b * (y - x**2)**2 + (z - y**2)**2
         return value
 
@@ -77,7 +77,7 @@ class Surface:
         grad_z = 2 * (z - y**2)
         return np.array([grad_x, grad_y, grad_z])
 
-    # Michalewicz Function and Gradient (3D version)
+    # Michalewicz Function and Gradient (3D version) sba not working here
     def michalewicz(self, x, y, z, m=10):
         value = - (np.sin(x) * np.sin(x**2 / np.pi))**(2 * m) - (np.sin(y) * np.sin(y**2 / np.pi))**(2 * m) - (np.sin(z) * np.sin(z**2 / np.pi))**(2 * m)
         return value
