@@ -46,7 +46,7 @@ class AdamOptimizer:
         return self.path
 
 class SimulatedAnnealingOptimizer:
-    def __init__(self, surface_function, curr_pt=None, max_iterations=1000, temperature=5, min_temp=.001, cooling_rate=.7):
+    def __init__(self, surface_function, curr_pt=None, max_iterations=1000, temperature=10, min_temp=.001, cooling_rate=.9):
         self.surface_function = surface_function
         self.curr_pt = self.get_initial_pt(curr_pt)
 
@@ -141,84 +141,8 @@ class ParticleSwarmOptimizer:
 
     def update_position(self, particle_idx):
         new_position = self.positions[particle_idx] + self.velocities[particle_idx]
-        return new_position
-
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
-        self.c2 = c2                
+        return new_position    
+            
     def optimize(self):
         for iteration in range(self.max_iter):
             for i in range(self.num_particles):
@@ -372,7 +296,7 @@ class SwarmBasedAnnealingOptimizer:
         return self.global_best_position, self.global_best_fitness, self.paths, self.values
 
 class HdFireflySimulatedAnnealingOptimizer:
-    def __init__(self, surface_function,  dimensions, pop_test=30, hdfa_iterations=10, gamma=1, alpha=.2, sa_iterations=1000, temperature=10, k=.8, c=.95): 
+    def __init__(self, surface_function,  dimensions, pop_test=100, hdfa_iterations=100, gamma=1, alpha=.2, sa_iterations=1000, temperature=10, k=.8, c=.95): 
         self.objective_computation = surface_function
 
         self.pop_test = pop_test 
@@ -470,7 +394,7 @@ class HdFireflySimulatedAnnealingOptimizer:
             hdfa_ctr += 1
         #print(in_min_region, " ", min_region, " ", min_reg_fitness)
 
-        sa = SimulatedAnnealingOptimizer(self.objective_computation, min_position)
+        sa = SimulatedAnnealingOptimizer(self.objective_computation, min_position, temperature=5, cooling_rate = .7)
         
         min_pt, min_fitness, path = sa.optimize()
 
