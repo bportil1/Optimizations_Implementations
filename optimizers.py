@@ -1,5 +1,5 @@
 import numpy as np
-from bsp import *
+from bsp2 import *
 
 class AdamOptimizer:
     def __init__(self, surface_function, gradient_function, curr_pt, num_iterations=100, lambda_v=.99, lambda_s=.9999, epsilon=1e10-8, alpha=10):
@@ -59,11 +59,11 @@ class SimulatedAnnealingOptimizer:
     def optimize(self):
 
         print("Initial Point: ", self.curr_pt)
-
+        curr_energy = self.surface_function(self.curr_pt[0], self.curr_pt[1], self.curr_pt[2])
         for idx in range(self.max_iterations):
             new_position = self.solution_transition(self.curr_pt)
             new_energy = self.surface_function(self.curr_pt[0], self.curr_pt[1], self.curr_pt[2])
-            alpha = self.acceptance_probability_computation(curr_energy, new_energy, self.temperature)
+            alpha = self.acceptance_probability_computation(curr_energy, new_energy)
 
             if new_energy < curr_energy: 
                 self.curr_pt = new_position
@@ -327,11 +327,11 @@ class HdFireflySimulatedAnnealingOptimizer:
 
     def compute_attractiveness(self, ff_idx_1, ff_idx_2):
         norm = self.l2_norm(ff_idx_1, ff_idx_2)
-        return self.beta * np.exp(-self.gamma*norm)
+        return self.pop_attractiveness[ff_idx_1] * np.exp(-self.gamma*norm)
 
     def update_position(self, ff_idx_1, ff_idx_2, new_attr):
         #attractiveness = self.compute_attractiveness(ff_idx_1, ff_idx_2)
-        return self.pop_positions[ff_idx_1] + new_attr * [ff_idx_1] * (self.pop_positions[ff_idx_2] - self.pop_positions[ff_idx_1]) + self.alpha*(np.random.rand()-.5)
+        return self.pop_positions[ff_idx_1] + new_attr * (self.pop_positions[ff_idx_2] - self.pop_positions[ff_idx_1]) + self.alpha*(np.random.rand()-.5)
 
     def update_fitness(self, ff_idx_1):
         self.pop_fitness[ff_idx_1] = self.objective_computation(self.pop_positions[ff_idx_1][0], self.pop_positions[ff_idx_1][1], self.pop_positions[ff_idx_1][2])
@@ -350,13 +350,17 @@ class HdFireflySimulatedAnnealingOptimizer:
                     if self.pop_fitness[idx1] < self.pop_fitness[idx2]:
                         new_attr = self.compute_attractiveness(idx1, idx2)
                         new_position = self.update_position(idx1, idx2, new_attr)
-                        best_region = find_region_with_lowest_fitness(self.bsp_tree, new_pos)
-                        new_fitness = self.objective_computation(best_region[0], best_region[1], best_region[2])
-                        in_min_region, min_region, min_reg_fitness, self.bsp_tree = find_region_with_lowest_fitness(self.bsp_tree, self.pop_positions[idx1], self.pop_fitness[idx1])
+                        in_min_region, min_region, min_reg_fitness, new_tree = find_region_with_lowest_fitness(self.objective_computation, self.bsp_tree, self.pop_positions[idx1], self.pop_fitness[idx1], self.dimensions)
+                        print("Min region: ", min_region)
+                        new_fitness = self.objective_computation(min_region[0][0], min_region[0][1], min_region[0][2])
+                        print("Potential New Position: ", new_position)
+                        print("Potential New Position Error: ", new_fitness) 
                         if in_min_region:
-                            self.pop_fitness[idx] = self.objective_computation(new_position[0], new_position[1], new_position[2])
+                            print("New Tree: ", self.bsp_tree)
+                            self.pop_fitness[idx1] = self.objective_computation(new_position[0], new_position[1], new_position[2])
                             self.pop_positions[idx1] = new_position
                             self.pop_attractiveness[idx1] = new_attr
+                            self.bsp_tree = new_tree
                         
                         self.pop_alpha[idx1] = np.abs(new_fitness - min_reg_fitness)
                     
@@ -371,7 +375,7 @@ class HdFireflySimulatedAnnealingOptimizer:
                 nondecreasing_alpha_counter += 1
             else:
                 nondecreasing_alpha_counter = 0
-            if new_alpha == 0 or non_decreasing_alpha_counter == 10:
+            if new_alpha == 0 or nondecreasing_alpha_counter == 10:
                 maturity_condition = False
 
             avg_alpha = new_alpha
