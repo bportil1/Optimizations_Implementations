@@ -46,9 +46,8 @@ class AdamOptimizer:
         return self.path
 
 class SimulatedAnnealingOptimizer:
-    def __init__(self, surface_function, gradient_function, curr_pt, max_iterations=1000, temperature=10, min_temp=.001, cooling_rate=.9):
+    def __init__(self, surface_function, curr_pt, max_iterations=1000, temperature=10, min_temp=.001, cooling_rate=.9):
         self.surface_function = surface_function
-        self.gradient_function = gradient_function
         self.curr_pt = curr_pt
 
         self.temperature = temperature
@@ -59,8 +58,10 @@ class SimulatedAnnealingOptimizer:
 
     def optimize(self):
 
-        for idx in range(max_iterations):
-            new_position = self.solution_transition(self.curr_pt, self.temperature)
+        print("Initial Point: ", self.curr_pt)
+
+        for idx in range(self.max_iterations):
+            new_position = self.solution_transition(self.curr_pt)
             new_energy = self.surface_function(self.curr_pt[0], self.curr_pt[1], self.curr_pt[2])
             alpha = self.acceptance_probability_computation(curr_energy, new_energy, self.temperature)
 
@@ -83,8 +84,8 @@ class SimulatedAnnealingOptimizer:
 
         return  self.curr_pt, curr_energy, self.path
 
-    def solution_transition(self):
-        new_position = self.curr_pt + np.random.normal(0, self.temperature, size = len(curr_pt))
+    def solution_transition(self, curr_pt):
+        new_position = curr_pt + np.random.normal(0, self.temperature, size = len(curr_pt))
         return new_position
 
     def acceptance_probability_computation(self, curr_energy, new_energy):
@@ -284,11 +285,10 @@ class SwarmBasedAnnealingOptimizer:
         return self.global_best_position, self.global_best_fitness, self.paths, self.values
 
 class HdFireflySimulatedAnnealingOptimizer:
-    def __init__(self, surface_function, pop_test, pop_real, dimensions, hdfa_iterations, gamma, alpha, sa_iterations, c, temperature, k): 
+    def __init__(self, surface_function,  dimensions, pop_test=30, hdfa_iterations=10, gamma=1, alpha=.2, sa_iterations=1000, temperature=10, k=.8, c=.95): 
         self.objective_computation = surface_function
 
         self.pop_test = pop_test 
-        self.pop_real = pop_real
         self.dimensions = dimensions
         self.hdfa_iterations = hdfa_iterations
         self.alpha = alpha
@@ -299,9 +299,10 @@ class HdFireflySimulatedAnnealingOptimizer:
         self.k = k
 
         self.pop_positions = np.random.uniform(-200, 200, (self.pop_test, dimensions))
-        self.pop_attractiveness = np.ones((1, self.dimensions))
-        self.pop_fitness = np.zeros((1, self.dimensions))
-        self.pop_alpha = np.ones((1, self.dimensions))
+        self.pop_attractiveness = np.ones(self.pop_test)
+        self.pop_fitness = np.zeros(self.pop_test)
+        #print(self.pop_fitness)
+        self.pop_alpha = np.ones(self.pop_test)
 
         self.initialize_fitness()
 
@@ -314,14 +315,14 @@ class HdFireflySimulatedAnnealingOptimizer:
     #    self.pop_fitness, self.pop_positions, self.pop_attractiveness = zip(*sorted_arrays)
 
     def initialize_bsp(self):
-        bsp = BSP((200,200), self.dimensions)
+        bsp = BSP((-200,200), self.dimensions)
         return bsp.build_tree(self.pop_positions, self.pop_fitness)
 
     def initialize_fitness(self):
         for idx in range(self.pop_test):
             self.pop_fitness[idx] = self.objective_computation(self.pop_positions[idx][0], self.pop_positions[idx][1], self.pop_positions[idx][2])
 
-    def l2_norm(self, ff_idx_1, ff_idx_2)
+    def l2_norm(self, ff_idx_1, ff_idx_2):
         return np.sqrt(np.sum((self.pop_positions[ff_idx_1] - self.pop_positions[ff_idx_2])**2))
 
     def compute_attractiveness(self, ff_idx_1, ff_idx_2):
@@ -337,39 +338,45 @@ class HdFireflySimulatedAnnealingOptimizer:
         
     def optimize(self):
         avg_alpha = float('inf')
-        maturity_condition = False
+        maturity_condition = True
         nondecreasing_alpha_counter = 0
         min_position = None
         min_fitness = float('inf')
         while maturity_condition:
+            print("in while")
             for idx1 in range(self.pop_test):
                 for idx2 in range(self.pop_test):
+                    print(self.pop_fitness[idx1], " ", self.pop_fitness[idx2])
                     if self.pop_fitness[idx1] < self.pop_fitness[idx2]:
                         new_attr = self.compute_attractiveness(idx1, idx2)
-                        new_pos = self.update_position(idx1, idx2, new_attr)
+                        new_position = self.update_position(idx1, idx2, new_attr)
                         best_region = find_region_with_lowest_fitness(self.bsp_tree, new_pos)
                         new_fitness = self.objective_computation(best_region[0], best_region[1], best_region[2])
                         in_min_region, min_region, min_reg_fitness, self.bsp_tree = find_region_with_lowest_fitness(self.bsp_tree, self.pop_positions[idx1], self.pop_fitness[idx1])
                         if in_min_region:
-                            self.pop_fitness[idx] = self.objective_computation(new_pos[0], new_pos[1], new_pos[2])
-                            self.pop_positions[idx1] = new_pos
+                            self.pop_fitness[idx] = self.objective_computation(new_position[0], new_position[1], new_position[2])
+                            self.pop_positions[idx1] = new_position
                             self.pop_attractiveness[idx1] = new_attr
                         
                         self.pop_alpha[idx1] = np.abs(new_fitness - min_reg_fitness)
-
-                    if new_fitness < min_fitness:
-                        min_position = new_position
-                        min_fitness = new_fitness
-
+                    
+                        print("Curr Position: ", new_position)
+                        print("Curr Fitness: ", new_fitness)
+                        if new_fitness < min_fitness:
+                            min_position = new_position
+                            min_fitness = new_fitness
+        
             new_alpha = np.average(self.pop_alpha)
             if np.isclose(new_alpha, avg_alpha, atol=1e-08):
                 nondecreasing_alpha_counter += 1
             else:
                 nondecreasing_alpha_counter = 0
             if new_alpha == 0 or non_decreasing_alpha_counter == 10:
-                maturity_condition = True
+                maturity_condition = False
 
             avg_alpha = new_alpha
+
+        #print(in_min_region, " ", min_region, " ", min_reg_fitness)
 
         sa = SimulatedAnnealingOptimizer(self.objective_computation, min_position)
         

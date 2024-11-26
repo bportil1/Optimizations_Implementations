@@ -28,10 +28,12 @@ class tests():
         self.swarm_plot(minima, lowest_val, paths, values)
 
     def hdffsa_test(self):
-        hdffsa = HdFireflySimulatedAnnealingOptimizer(self.surface_fcn.ackley, )
+        hdffsa = HdFireflySimulatedAnnealingOptimizer(self.surface_fcn.ackley, 3, 30, 10)
+        minima, lowest_val, path = hdffsa.optimize()
 
+        self.annealing_plot(minima, lowest_val, path)
 
-    def annealing_plot():
+    def annealing_plot(self, minima, lowest_val, path):
         x = np.linspace(-50, 50, 1000)
         y = np.linspace(-600, 50, 1000)
         X, Y = np.meshgrid(x, y)
@@ -73,17 +75,6 @@ class tests():
 
         # Show the plot
         fig.show()
-
-        plt.figure(figsize=(8, 6))
-        for value in values:
-            plt.plot(value, label="Global Best Fitness")
-        plt.title("Global Best Fitness Over Iterations")
-        plt.xlim(0, len(values[0]))
-        plt.xlabel("Iteration")
-        plt.ylabel("Fitness Value")
-        plt.grid(True)
-        plt.legend()
-        plt.show()
 
     def swarm_plot(self, minima, lowest_val, paths, values, ):
         x = np.linspace(-50, 50, 1000)
@@ -211,4 +202,5 @@ def plot_error_surface(aew_obj):
 if __name__ == "__main__":
     test = tests()
     #test.pso_test()
-    test.sba_test()
+    #test.sba_test()
+    test.hdffsa_test()
