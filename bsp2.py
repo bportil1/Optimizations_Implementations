@@ -3,16 +3,8 @@ import networkx as nx
 import matplotlib.pyplot as plt
 
 class BSP:
-    def __init__(self, range_input, dimensions, tree=None):
-        """
-        Initializes the BSP with the given range for all dimensions.
-        `range_input` should be a tuple defining the range, like (-200, 200).
-        The range will be applied to all dimensions.
-        Example: range_input = (-200, 200) for 2D or 3D.
-        """
-        self.ranges = np.array([range_input] * dimensions)  # Default to 3D if only one range is provided
+    def __init__(self, dimensions, tree=None):
         self.dim = dimensions
-        self.fitness_scores_updated = None
         self.tree = tree
 
     def bisect(self, points, plane, fitness_scores):
@@ -91,6 +83,13 @@ class BSP:
             starting_plane = (np.zeros(self.dim), np.ones(self.dim))  # Default plane
         
         bsp_helper(points, fitness_scores, starting_plane)
+        
+        self.tree = graph
+
+        self.visualize_tree()
+        min_fitness_points = []
+
+            #print(ahead)
         return nx.relabel.convert_node_labels_to_integers(graph)
 
     def grow_tree(self, points, fitness_scores):
@@ -139,7 +138,20 @@ class BSP:
             starting_plane = (np.zeros(self.dim), np.ones(self.dim))  # Default plane
         
         bsp_helper(points, fitness_scores, starting_plane)
+
+        self.visualize_tree()
+
         return nx.relabel.convert_node_labels_to_integers(graph)
+
+    def visualize_tree(self):
+        pos = nx.spring_layout(self.tree)
+        node_labels = nx.get_node_attributes(self.tree, 'plane')
+
+        plt.figure(figsize=(12, 12))
+        nx.draw(self.tree, pos, with_labels=True, node_size=3000, node_color='skyblue', font_size=10, font_weight='bold', arrows=True)
+        nx.draw_networkx_labels(self.tree, pos, labels=node_labels)
+        plt.title("Current BSP")
+        plt.show
 
 def select_dividing_plane(points, dimensions):
     """
