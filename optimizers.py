@@ -1,5 +1,5 @@
 import numpy as np
-from bsp2 import *
+from bsp import *
 
 class AdamOptimizer:
     def __init__(self, surface_function, gradient_function, curr_pt, num_iterations=100, lambda_v=.99, lambda_s=.9999, epsilon=1e10-8, alpha=10):
@@ -310,19 +310,13 @@ class HdFireflySimulatedAnnealingOptimizer:
         self.pop_positions = np.random.rand(self.pop_test, dimensions)
         self.pop_attractiveness = np.ones(self.pop_test)
         self.pop_fitness = np.zeros(self.pop_test)
-        #print(self.pop_fitness)
+    
         self.pop_alpha = np.zeros(self.pop_test)
 
         self.initialize_fitness()
 
         self.bsp_tree = self.initialize_bsp()
-        
-        #self.sort_pop_arrays()
-
-    #def sort_pop_arrays(self):
-    #    sorted_arrays = sorted(zip(self.pop_fitness, self.pop_positions, self.pop_attractiveness)
-    #    self.pop_fitness, self.pop_positions, self.pop_attractiveness = zip(*sorted_arrays)
-
+    
     def initialize_bsp(self):
         bsp = BSP(self.dimensions)
         bsp.build_tree(self.pop_positions, self.pop_fitness)
@@ -346,17 +340,6 @@ class HdFireflySimulatedAnnealingOptimizer:
     def update_fitness(self, ff_idx_1):
         self.pop_fitness[ff_idx_1] = self.objective_computation(self.pop_positions[ff_idx_1][0], self.pop_positions[ff_idx_1][1], self.pop_positions[ff_idx_1][2])
     
-    '''    
-    def grow_bsp(self, points, fitness_scores):
-        bsp = BSP(self.dimensions, self.bsp_tree)
-        self.bsp_tree = bsp.grow_tree(points, fitness_scores)
-        #self.bsp_tree.visualize_tree()
-
-    def get_region_points(self, point, fitness):
-        bsp = BSP(self.dimensions, self.bsp_tree)
-        return bsp.find_region_points(point, fitness)
-    '''
-
     def optimize(self):
         last_alpha = float('inf')
         maturity_condition = True
