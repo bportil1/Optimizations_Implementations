@@ -57,7 +57,7 @@ class SimulatedAnnealingOptimizer:
         self.path = []
 
     def get_initial_pt(self, curr_pt):
-        if isinstance(curr_pt, np.ndarray):
+        if not isinstance(curr_pt, np.ndarray):
             curr_pt = [0,0,0]
         else:
             curr_pt = curr_pt
@@ -74,12 +74,14 @@ class SimulatedAnnealingOptimizer:
             new_energy = self.surface_function(self.curr_pt[0], self.curr_pt[1], self.curr_pt[2])
             alpha = self.acceptance_probability_computation(curr_energy, new_energy)
 
+            print("Acceptance Probability: ", alpha)
+
             if new_energy < curr_energy: 
                 self.curr_pt = new_position
                 curr_energy = new_energy
                 self.path.append((self.curr_pt[0], self.curr_pt[1], self.curr_pt[2], new_energy))
                 update_ctr = 0
-            elif np.random.rand() < alpha:
+            elif np.random.rand() > alpha:
                 self.curr_pt = new_position
                 curr_energy = new_energy
                 self.path.append((self.curr_pt[0], self.curr_pt[1], self.curr_pt[2], new_energy))
@@ -90,7 +92,7 @@ class SimulatedAnnealingOptimizer:
 
             print("Current Error: ", curr_energy)
             print("Current Temperature: ", self.temperature)
-            if self.temperature < self.min_temp or update_ctr == 20:
+            if self.temperature < self.min_temp or update_ctr == 10:
                 break
 
         return  self.curr_pt, curr_energy, self.path
@@ -103,7 +105,7 @@ class SimulatedAnnealingOptimizer:
         if new_energy < curr_energy:
             return 1.0
         else:
-            return np.exp((curr_energy - new_energy) / self.temperature )
+            return np.exp(-((new_energy - curr_energy) / self.temperature) )
 
 class ParticleSwarmOptimizer:
     def __init__(self, surface_function, gradient_function, num_particles, dimensions, max_iter, w=0.5, c1=1.5, c2=1.5):
@@ -296,7 +298,7 @@ class SwarmBasedAnnealingOptimizer:
         return self.global_best_position, self.global_best_fitness, self.paths, self.values
 
 class HdFireflySimulatedAnnealingOptimizer:
-    def __init__(self, surface_function,  dimensions, pop_test=100, hdfa_iterations=100, gamma=1, alpha=.2, sa_iterations=1000): 
+    def __init__(self, surface_function,  dimensions, pop_test=100, hdfa_iterations=5, gamma=1, alpha=.2): 
         self.objective_computation = surface_function
 
         self.pop_test = pop_test 
@@ -304,7 +306,6 @@ class HdFireflySimulatedAnnealingOptimizer:
         self.hdfa_iterations = hdfa_iterations
         self.alpha = alpha
         self.gamma = gamma
-        self.sa_iterations = sa_iterations
 
         self.pop_positions = np.random.rand(self.pop_test, dimensions)
         self.pop_attractiveness = np.ones(self.pop_test)
@@ -324,7 +325,8 @@ class HdFireflySimulatedAnnealingOptimizer:
 
     def initialize_bsp(self):
         bsp = BSP(self.dimensions)
-        return bsp.build_tree(self.pop_positions, self.pop_fitness)
+        bsp.build_tree(self.pop_positions, self.pop_fitness)
+        return bsp
 
     def initialize_fitness(self):
         for idx in range(self.pop_test):
@@ -343,10 +345,17 @@ class HdFireflySimulatedAnnealingOptimizer:
 
     def update_fitness(self, ff_idx_1):
         self.pop_fitness[ff_idx_1] = self.objective_computation(self.pop_positions[ff_idx_1][0], self.pop_positions[ff_idx_1][1], self.pop_positions[ff_idx_1][2])
-        
+    
+    '''    
     def grow_bsp(self, points, fitness_scores):
-        bsp = BSP(self.bsp_tree, self.dimensions)
+        bsp = BSP(self.dimensions, self.bsp_tree)
         self.bsp_tree = bsp.grow_tree(points, fitness_scores)
+        #self.bsp_tree.visualize_tree()
+
+    def get_region_points(self, point, fitness):
+        bsp = BSP(self.dimensions, self.bsp_tree)
+        return bsp.find_region_points(point, fitness)
+    '''
 
     def optimize(self):
         last_alpha = float('inf')
@@ -355,50 +364,61 @@ class HdFireflySimulatedAnnealingOptimizer:
         min_position = None
         min_fitness = float('inf')
         hdfa_ctr = 0
+        min_reg_fitness = float('inf')
         while hdfa_ctr < self.hdfa_iterations:
             print("in while")
             for idx1 in range(self.pop_test):
                 for idx2 in range(self.pop_test):
+                    print(idx1, " ", idx2)
                     print(self.pop_fitness[idx1], " ", self.pop_fitness[idx2])
+                    #print("len of bsp tree: ", len(self.bsp_tree.tree.nodes))
+                    #self.bsp_tree.visualize_tree()
                     if self.pop_fitness[idx1] < self.pop_fitness[idx2]:
                         new_attr = self.compute_attractiveness(idx1, idx2)
-                        
-                        new_position = self.update_position(new_attr, idx1, idx2)
-                                    
-                        in_min_region, min_region, min_reg_fitness, new_tree = find_region_with_lowest_fitness(self.objective_computation, self.bsp_tree, new_attr, new_position, self.dimensions)
-                        print("Min region: ", min_region)
+                        new_position = self.update_position(new_attr, idx1, idx2)                     
+                        in_min_region, min_region, min_reg_fitness, new_graph, min_node, region_points = find_region_with_lowest_fitness(self.objective_computation, self.bsp_tree, new_attr, new_position, self.dimensions)
+                        print("Min region: ", region_points)
                         new_fitness = self.objective_computation(min_region[0][0], min_region[0][1], min_region[0][2])
                         print("Potential New Position: ", new_position)
                         print("Potential New Position Error: ", new_fitness) 
-    
+                        #self.pop_positions[idx1] = new_position
+
                         if new_fitness < self.pop_fitness[idx1]:
-                            print("New Tree: ", self.bsp_tree)
+                            #print("New Tree: ", self.bsp_tree)
                             self.pop_fitness[idx1] = new_fitness
                             self.pop_positions[idx1] = new_position
+                            #region_points = self.get_region_points(new_position, new_fitness)
+                            #print(region_points)
+                            #self.bsp_tree(new_position, new_fitness)
                         
-                        self.grow_bsp(new_position, new_fitness)
-                         
                         print("Curr Position: ", self.pop_positions[idx1])
                         print("Curr Fitness: ", self.pop_fitness[idx1])
-                        #if new_fitness < min_fitness:
-                        #    min_position = new_position
-                        #    min_fitness = new_fitness
-            
-            while maturity_condition:
-                self.pop_alpha[idx1] = np.abs(min_reg_fitness - min_fitness)
-                alpha_avg = np.average(self.pop_alpha[:idx1])
-                if alpha_avg <= 0 or nonincreasing_alpha_counter >= 10:
-                    break
-                if last_alpha > alpha_avg:  
-                    nonincreasing_alpha_counter += 1
-                else:
-                    nonincreasing_alpha_counter = 0
 
-            last_alpha = alpha_avg
+                if maturity_condition:
+                    if min_reg_fitness == float('inf'):
+                        min_reg_fitness = self.pop_fitness[idx1]
+                    self.pop_alpha[idx1] = np.abs(min_reg_fitness - min_fitness)
+                    if idx1 > 1:
+                        alpha_avg = np.average(self.pop_alpha[:idx1])
+                    else:
+                        alpha_avg = 1
+                    print("Current Alpha Average: ", alpha_avg)
+                    if alpha_avg <= 0 or nonincreasing_alpha_counter >= 10:
+                        break
+                    if last_alpha > alpha_avg:  
+                        nonincreasing_alpha_counter += 1
+                    else:
+                        nonincreasing_alpha_counter = 0
+
+                    last_alpha = alpha_avg
             hdfa_ctr += 1
         #print(in_min_region, " ", min_region, " ", min_reg_fitness)
 
-        sa = SimulatedAnnealingOptimizer(self.objective_computation, min_position, temperature=5, cooling_rate = .7)
+        _, min_position, _ = self.bsp_tree.find_lowest_fitness_region()
+
+        print("Final Min Position: ", min_position[0])
+
+        sa = SimulatedAnnealingOptimizer(self.objective_computation, min_position[0], temperature=10, cooling_rate = .95)
         
         min_pt, min_fitness, path = sa.optimize()
 

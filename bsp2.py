@@ -86,7 +86,6 @@ class BSP:
         
         self.tree = graph
 
-        self.visualize_tree()
         min_fitness_points = []
 
             #print(ahead)
@@ -138,20 +137,182 @@ class BSP:
             starting_plane = (np.zeros(self.dim), np.ones(self.dim))  # Default plane
         
         bsp_helper(points, fitness_scores, starting_plane)
-
-        self.visualize_tree()
+        
+        self.tree = graph
 
         return nx.relabel.convert_node_labels_to_integers(graph)
 
     def visualize_tree(self):
+        print("in visualize tree")
         pos = nx.spring_layout(self.tree)
+        #print(pos)
         node_labels = nx.get_node_attributes(self.tree, 'plane')
+        #print(node_labels)
+        plt.figure(figsize=(100, 100))
+        #nx.draw(self.tree, pos, with_labels=True, node_size=3000, node_color='skyblue', font_size=10, font_weight='bold', arrows=True)
+        nx.draw(self.tree, pos, node_size=30, node_color='skyblue', font_size=10, font_weight='bold', arrows=True)
 
-        plt.figure(figsize=(12, 12))
-        nx.draw(self.tree, pos, with_labels=True, node_size=3000, node_color='skyblue', font_size=10, font_weight='bold', arrows=True)
-        nx.draw_networkx_labels(self.tree, pos, labels=node_labels)
+        #nx.draw_networkx_labels(self.tree, pos, labels=node_labels)
         plt.title("Current BSP")
-        plt.show
+        plt.show()
+        plt.close()
+        print("at end  of plot")
+    
+    def add_point(self, point, fitness):
+        """
+        Add a new point with its fitness score to the appropriate place in the BSP tree.
+        If necessary, bisect the region to accommodate the new point.
+        """
+        # Start from the root node of the tree
+        current_node = list(self.tree.nodes)[0]  # Start from the root of the tree
+        
+        while current_node is not None:
+            print('Current Node: ', current_node)
+            print('Current Node Attributes: ', self.tree.nodes[current_node])
+            
+            # Get the plane defining the current node
+            plane = self.tree.nodes[current_node]["plane"]
+            min_fitness_points = self.tree.nodes[current_node]["min_fitness_points"]
+            
+            # Check if the point is in the region of the current node
+            normal = plane[1]
+            point_on_plane = np.dot(point - plane[0], normal)
+
+            # If the point is on the plane, add it to this node's points
+            if np.isclose(point_on_plane, 0):
+                print(f"Point {point} is on the plane of the node.")
+                self.tree.nodes[current_node]["min_fitness_points"].append(point)
+                self.tree.nodes[current_node]["fitness_scores"].append(fitness)
+                break
+
+            # If the point is ahead (positive side of the plane), move to the "ahead" node
+            elif point_on_plane > 0:
+                children = list(self.tree.successors(current_node))
+                if len(children) == 1:
+                    current_node = children[0]  # Move to the "ahead" child
+                elif len(children) > 1:
+                    current_node = children[1]  # Move to the "ahead" child (second child)
+                else:
+                    # No "ahead" child, create a new node and add the point here
+                    new_plane = select_dividing_plane([point], self.dim)  # Select a new plane for this region
+                    new_node_id = id(new_plane)
+                    self.tree.add_node(new_node_id, plane=new_plane, min_fitness_points=[point], fitness_scores=[fitness])
+                    self.tree.add_edge(current_node, new_node_id, position=1)  # Connect the parent to the new node
+                    break
+
+            # If the point is behind (negative side of the plane), move to the "behind" node
+            elif point_on_plane < 0:
+                children = list(self.tree.predecessors(current_node))
+                if len(children) == 1:
+                    current_node = children[0]  # Move to the "behind" child
+                elif len(children) > 1:
+                    current_node = children[1]  # Move to the "behind" child (second child)
+                else:
+                    # No "behind" child, create a new node and add the point here
+                    new_plane = select_dividing_plane([point], self.dim)  # Select a new plane for this region
+                    new_node_id = id(new_plane)
+                    self.tree.add_node(new_node_id, plane=new_plane, min_fitness_points=[point], fitness_scores=[fitness])
+                    self.tree.add_edge(current_node, new_node_id, position=-1)  # Connect the parent to the new node
+                    break
+        print("New point added successfully.")
+
+
+    '''
+    def find_region_points(self, point, fitness):
+        """
+        Iteratively traverse the BSP tree to find the region that the given point belongs to.
+        Returns the points in the region the point belongs to.
+        """
+        stack = [(list(self.tree.nodes)[0])]  # Start from the root node
+        result = []
+
+        print("Stack: ", self.tree.nodes)
+        
+        self.visualize_tree()
+
+        while stack:
+            print("Traversing Tree")
+            node_id, point = stack.pop()
+
+            plane = self.tree.nodes[node_id]['plane']
+            point = self.tree.nodes[node_id]['min_fitness_points']
+            normal = plane[1]
+            point_on_plane = np.dot(point - plane[0], normal)
+
+            print("Current Node Id: ", self.tree.nodes[node_id])
+            print("Current Point: ", point)
+
+            # Determine the next node to traverse based on the point's position relative to the plane
+            if np.isclose(point_on_plane, 0):
+                # If the point is on the plane, return the points at this node
+                result = self.tree.nodes[node_id]['min_fitness_points']
+                break
+            elif point_on_plane > 0:
+                # Traverse the "ahead" (positive) side of the tree
+                children = list(self.tree.successors(node_id))
+                if children:
+                    stack.append((children[0], point))  # Add the child to the stack
+                else:
+                    # If no children, add a new node
+                    new_plane = self.select_dividing_plane([point])  # You can adjust this logic as needed
+                    new_node_id = id(new_plane)
+                    self.tree.add_node(new_node_id, plane=new_plane, min_fitness=fitness, min_fitness_points=[point])
+                    self.tree.add_edge(node_id, new_node_id, position=1)
+                    result = [point]  # Return the point in the new region
+                    break
+            else:
+                # Traverse the "behind" (negative) side of the tree
+                children = list(self.tree.predecessors(node_id))
+                if children:
+                    stack.append((children[0], point))  # Add the child to the stack
+                else:
+                    # If no children, add a new node
+                    new_plane = self.select_dividing_plane([point])  # You can adjust this logic as needed
+                    new_node_id = id(new_plane)
+                    self.tree.add_node(new_node_id, plane=new_plane, min_fitness=fitness, min_fitness_points=[point])
+                    self.tree.add_edge(node_id, new_node_id, position=-1)
+                    result = [point]  # Return the point in the new region
+                    break
+        print("Traversal Complete")
+        return result
+    '''
+    def find_lowest_fitness_region(self):
+        """
+        Traverses the BSP tree to find the region with the lowest fitness score.
+        Returns the region points and their fitness scores with the minimum fitness.
+        """
+        lowest_fitness = float('inf')
+        lowest_fitness_region = None
+        lowest_fitness_points = None
+        
+        # Start from the root node
+        nodes_to_visit = [list(self.tree.nodes)[0]]  # List with root node
+        visited = set()
+
+        while nodes_to_visit:
+            current_node = nodes_to_visit.pop()
+            
+            if current_node in visited or self.tree.nodes[current_node] == {}:
+                continue
+            visited.add(current_node)
+            
+            print("Final ATTRss: ", self.tree.nodes[current_node])
+
+            # Get the node attributes: fitness points and the minimum fitness value
+            min_fitness_points = self.tree.nodes[current_node]["min_fitness_points"]
+            min_fitness = self.tree.nodes[current_node]["min_fitness"]
+            
+            # Update the lowest fitness if necessary
+            if min_fitness < lowest_fitness:
+                lowest_fitness = min_fitness
+                lowest_fitness_region = current_node
+                lowest_fitness_points = min_fitness_points
+
+            # Add children (subtree) of the current node to the list for further traversal
+            children = list(self.tree.successors(current_node)) + list(self.tree.predecessors(current_node))
+            nodes_to_visit.extend(children)
+        
+        return lowest_fitness_region, lowest_fitness_points, lowest_fitness
 
 def select_dividing_plane(points, dimensions):
     """
@@ -163,7 +324,7 @@ def select_dividing_plane(points, dimensions):
     dividing_axis = np.argmax(variances)  # Choose the axis with the greatest variance
     #sorted_points = points[points[:, dividing_axis].argsort()]
     print("before sort: ", points)
-    sorted_points = points[points[:, dividing_axis].argsort()]
+    sorted_points = points[np.argsort(points[:, 0])]
     print("after sort: ", sorted_points)    
     median_point = sorted_points[len(sorted_points) // 2]
 
@@ -176,8 +337,94 @@ def find_region_with_lowest_fitness(objective_computation, tree, point, fitness,
     """
     Traverse the BSP tree to find the region where the point lies,
     check if it is in the lowest fitness region, and if so, bisect the region.
+    Returns the node with the lowest fitness, its region (all points in its subtree), and all its child nodes (subtree).
     """
-    current_node = list(tree.nodes)[0]  # Start from the root of the tree
+    current_node = list(tree.tree.nodes)[0]  # Start from the root of the tree
+    lowest_fitness = float('inf')
+    lowest_fitness_region = None
+    all_subtree_points = []  # To store all points in the subtree
+    node_with_lowest_fitness = None  # To store the node with the lowest fitness
+
+    def dfs(node):
+        """Recursive DFS to gather all points and nodes in the subtree rooted at 'node'."""
+        # Get points of the current node
+        min_fitness_points = tree.tree.nodes[node]["min_fitness_points"]
+        all_subtree_points.extend(min_fitness_points)  # Add points to the region
+        children = list(tree.tree.successors(node))
+        for child in children:
+            dfs(child)
+
+    while current_node is not None:
+        print('Current Node: ', current_node)
+        print('Current Node Attributes: ', tree.tree.nodes[current_node])
+        print('Current Neighbors: ', list(tree.tree.neighbors(current_node)))
+        
+        # Get the plane defining the current node
+        plane = tree.tree.nodes[current_node]["plane"]
+        min_fitness = tree.tree.nodes[current_node]["min_fitness"]
+        min_fitness_points = tree.tree.nodes[current_node]["min_fitness_points"]
+
+        # Update the lowest fitness if needed
+        if min_fitness < lowest_fitness:
+            lowest_fitness = min_fitness
+            lowest_fitness_region = min_fitness_points  # Points of the lowest fitness region
+            node_with_lowest_fitness = current_node  # Store the node with the lowest fitness
+
+        # Check if the point is in the lowest fitness region
+        if point in lowest_fitness_region:
+            print(f"Point {point} is in the lowest fitness region, bisecting the region.")
+            # Bisect the region
+            new_fitness_scores = objective_computation(lowest_fitness_region[0][0], lowest_fitness_region[0][1], lowest_fitness_region[0][2]) 
+
+            bsp = BSP(tree, dimensions)
+            graph = bsp.grow_tree(lowest_fitness_region, new_fitness_scores)
+
+            # Add DFS to gather the entire subtree points and nodes
+            dfs(current_node)
+
+            # Return the updated tree along with the node and its subtree
+            return True, lowest_fitness_region, lowest_fitness, graph, node_with_lowest_fitness, all_subtree_points
+
+        normal = plane[1]
+        point_on_plane = np.dot(point - plane[0], normal)
+
+        # Move to the appropriate subtree
+        if point_on_plane > 0:
+            neighbors = list(tree.tree.neighbors(current_node))
+            if len(neighbors) == 1:
+                current_node = neighbors[0]
+            elif len(neighbors) > 1:
+                current_node = neighbors[1]  # Move to the "ahead" node
+            else:
+                break  # No more nodes, end the search
+        elif point_on_plane < 0:
+            neighbors = list(tree.tree.neighbors(current_node))
+            if neighbors:
+                current_node = neighbors[0]  # Move to the "behind" node
+            else:
+                break  # No more nodes, end the search
+        else:
+            break  # Point is on the plane, we stop here
+
+        if tree.tree.nodes[current_node] == {}:
+            break
+
+    # If we exit the loop, that means we traversed through the tree
+    # and found the lowest fitness region and its subtree
+    print(f"Lowest fitness region: {lowest_fitness_region}")
+    print(f"Subtree points: {all_subtree_points}")
+
+    # Return the node with the lowest fitness and all the points in its subtree
+    return False, lowest_fitness_region, lowest_fitness, tree, node_with_lowest_fitness, all_subtree_points
+
+
+'''
+def find_region_with_lowest_fitness(objective_computation, tree, point, fitness, dimensions):
+    """
+    Traverse the BSP tree to find the region where the point lies,
+    check if it is in the lowest fitness region, and if so, bisect the region.
+    """
+    current_node = list(tree.tree.nodes)[0]  # Start from the root of the tree
     lowest_fitness = float('inf')
     lowest_fitness_region = None
 
@@ -203,7 +450,7 @@ def find_region_with_lowest_fitness(objective_computation, tree, point, fitness,
             #new_node_id = id(new_plane)
             new_fitness_scores = objective_computation(lowest_fitness_region[0][0], lowest_fitness_region[0][1], lowest_fitness_region[0][2]) 
 
-            bsp = BSP((-200,200), dimensions, tree)
+            bsp = BSP(tree, dimensions)
             
             graph = bsp.grow_tree(lowest_fitness_region, new_fitness_scores)
 
@@ -244,6 +491,6 @@ def find_region_with_lowest_fitness(objective_computation, tree, point, fitness,
 
     #print(f"Updating point {point} with fitness score: {point_fitness}")
     return False, lowest_fitness_region, lowest_fitness, tree
-
+'''
 
 
