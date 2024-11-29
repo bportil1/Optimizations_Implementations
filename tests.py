@@ -37,7 +37,7 @@ class tests():
         self.swarm_plot(minima, lowest_val, paths, values)
 
     def hdffsa_test(self):
-        hdffsa = HdFireflySimulatedAnnealingOptimizer(self.surface_fcn.rastrigin, 3, 100)
+        hdffsa = HdFireflySimulatedAnnealingOptimizer(self.surface_fcn.ackley, 3, 100)
         minima, lowest_val, path = hdffsa.optimize()
 
         print("Best Position: ", minima)
@@ -49,7 +49,7 @@ class tests():
         x = np.linspace(-50, 50, 1000)
         y = np.linspace(-600, 50, 1000)
         X, Y = np.meshgrid(x, y)
-        Z = self.surface_fcn.rastrigin(X, Y, 0)  # For simplicity, use z=0 for surface visualization
+        Z = self.surface_fcn.ackley(X, Y, 0)  # For simplicity, use z=0 for surface visualization
 
         # Create a 3D surface plot using Plotly
         fig = go.Figure()

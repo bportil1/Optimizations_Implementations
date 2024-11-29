@@ -328,7 +328,7 @@ class HdFireflySimulatedAnnealingOptimizer:
 
     def initialize_positions(self, stage):
         if stage == 'initial':
-            return np.random.rand(self.pop_test, dimensions)
+            return np.random.rand(self.pop_test, self.dimensions)
         elif stage == 'finder_tracker':
             return self.finder_tracker_assignments()    
     
@@ -350,57 +350,71 @@ class HdFireflySimulatedAnnealingOptimizer:
         bsp = BSP(self.bsp_tree, self.dimensions)
         self.bsp_tree = bsp.grow_tree(points, fitness_scores)
 
-    def finder_tracker_assignments(self, tau):
+    def sort_ff_data(self):
+        indices = np.argsort(self.pop_fitness)
+        self.pop_fitness = self.pop_fitness[indices]
+        self.pop_positions = self.pop_positions[indices][:]
+        self.pop_attractiveness = self.pop_attractiveness[indices]
+        self.pop_alpha = self.pop_alpha[indices]
+
+    def finder_tracker_assignments(self, tol=.5):
+        for idx1 in range(self.pop_test):
+            for idx2 in range(self.pop_test):
+                if idx1 != idx2:
+                    same_region = self.bsp_tree.same_region_check(self.pop_positions[idx1], self.pop_positions[idx2], tol)
+                    if same_region:
+                        dist = np.linalg.norm(self.pop_positions[idx1] - self.pop_positions[idx2])
+                        if dist < tol:
+                            self.sort_ff_data()
+                            top_forty_percent = int(np.ceil(self.pop_test*.4))
+                            bottom_sixty_percent = int(np.floor(self.pop_test*.6))
+                            best_forty_positions = self.pop_positions[:top_forty_percent]
+                            best_forty_fitness = self.pop_fitness[:top_forty_percent]
+                            best_forty_attractiveness = self.pop_attractiveness[:top_forty_percent] 
+                            best_forty_alpha = self.pop_alpha[:top_forty_percent]
+                            bottom_sixty_positions = np.random.rand(np.floor(bottom_sixty_percent), self.dimensions)
+                            bottom_sixty_attractiveness = np.ones(bottom_sixty_percent)
+                            bottom_sixty_fitness = np.zeros(bottom_sixty_percent)
+                            bottom_sixty_alpha = np.zeros(bottom_sixty_percent)
+
+                            for idx in range(bottom_sixty_percent):
+                                self.pop_fitness[idx] = self.objective_computation(bottom_sixty_positions[idx][0], bottom_sixty_positions[idx][1], bottom_sixty_positions[idx][2])
+                            self.pop_positions = np.concatenate((best_forty_positions, bottom_sixty_positions))
+                            self.pop_fitness = np.concatenate((best_forty_fitness, bottom_sixty_fitness)).ravel()
+                            self.pop_attractiveness = np.concatenate((best_forty_attractiveness, bottom_sixty_attractiveness)).ravel()
+                            self.pop_alpha = np.concatenate((best_forty_alpha, bottom_sixty_alpha))
+                            return 0
         
-        self.finder_positions = np.zeros(np.ceil(self.pop_test*.4), dimensions)
-
-        self.tracker_positions = np.zeros(np.floor(self.pop_test*.6), dimensions)
-
-        for idx in range(self.pop_test):
-
     def optimize(self):
         last_alpha = float('inf')
         maturity_condition = True
         nonincreasing_alpha_counter = 0
-        min_position = None
-        min_fitness = float('inf')
         hdfa_ctr = 0
         min_reg_fitness = float('inf')
         while hdfa_ctr < self.hdfa_iterations:
-            print("in while")
             for idx1 in range(self.pop_test):
                 for idx2 in range(self.pop_test):
-                    print(idx1, " ", idx2)
-                    print(self.pop_fitness[idx1], " ", self.pop_fitness[idx2])
-                    #print("len of bsp tree: ", len(self.bsp_tree.tree.nodes))
-                    #self.bsp_tree.visualize_tree()
                     if self.pop_fitness[idx1] < self.pop_fitness[idx2]:
                         new_attr = self.compute_attractiveness(idx1, idx2)
                         new_position = self.update_position(new_attr, idx1, idx2)                     
                         in_min_region, min_region, min_reg_fitness, new_graph, min_node, region_points = find_region_with_lowest_fitness(self.objective_computation, self.bsp_tree, new_attr, new_position, self.dimensions)
-                        print("Min region: ", region_points)
                         new_fitness = self.objective_computation(min_region[0][0], min_region[0][1], min_region[0][2])
-                        print("Potential New Position: ", new_position)
-                        print("Potential New Position Error: ", new_fitness) 
-                        #self.pop_positions[idx1] = new_position
-
                         if new_fitness < self.pop_fitness[idx1]:
-                            #print("New Tree: ", self.bsp_tree)
                             self.pop_fitness[idx1] = new_fitness
                             self.pop_positions[idx1] = new_position
-                            #region_points = self.get_region_points(new_position, new_fitness)
-                            #print(region_points)
-                            #self.bsp_tree(new_position, new_fitness)
-                        
-                        print("Curr Position: ", self.pop_positions[idx1])
-                        print("Curr Fitness: ", self.pop_fitness[idx1])
-
+                        print("Potential New Position: ", new_position)
+                        print("Potential New Fitness: ", new_fitness)
+                
                 if maturity_condition:
                     if min_reg_fitness == float('inf'):
                         min_reg_fitness = self.pop_fitness[idx1]
-                    self.pop_alpha[idx1] = np.abs(min_reg_fitness - min_fitness)
+                    print("min reg_fitness :", min_reg_fitness)
+                    print("new_fitness: ", new_fitness)
+                    self.pop_alpha[idx1] = np.abs(min_reg_fitness - new_fitness)
+                    print("New pop alpha agent ", idx1,  " ", self.pop_alpha[idx1])
                     if idx1 > 1:
                         alpha_avg = np.average(self.pop_alpha[:idx1])
+                        print("New Alpha AVG: ", alpha_avg)
                     else:
                         alpha_avg = 1
                     print("Current Alpha Average: ", alpha_avg)
@@ -412,12 +426,15 @@ class HdFireflySimulatedAnnealingOptimizer:
                         nonincreasing_alpha_counter = 0
 
                     last_alpha = alpha_avg
+            self.finder_tracker_assignments()
             hdfa_ctr += 1
         #print(in_min_region, " ", min_region, " ", min_reg_fitness)
 
-        _, min_position, _ = self.bsp_tree.find_lowest_fitness_region()
+        _, min_position, lowest_fitness = self.bsp_tree.find_lowest_fitness_region()
 
         print("Final Min Position: ", min_position[0])
+
+        print("Final Error: ", lowest_fitness)
 
         sa = SimulatedAnnealingOptimizer(self.objective_computation, min_position[0], temperature=10, cooling_rate = .95)
         
