@@ -307,7 +307,7 @@ class HdFireflySimulatedAnnealingOptimizer:
         self.alpha = alpha
         self.gamma = gamma
 
-        self.pop_positions = np.random.rand(self.pop_test, dimensions)
+        self.pop_positions = self.initialize_positions('initial')
         self.pop_attractiveness = np.ones(self.pop_test)
         self.pop_fitness = np.zeros(self.pop_test)
     
@@ -326,6 +326,12 @@ class HdFireflySimulatedAnnealingOptimizer:
         for idx in range(self.pop_test):
             self.pop_fitness[idx] = self.objective_computation(self.pop_positions[idx][0], self.pop_positions[idx][1], self.pop_positions[idx][2])
 
+    def initialize_positions(self, stage):
+        if stage == 'initial':
+            return np.random.rand(self.pop_test, dimensions)
+        elif stage == 'finder_tracker':
+            return self.finder_tracker_assignments()    
+    
     def l2_norm(self, ff_idx_1, ff_idx_2):
         return np.sqrt(np.sum((self.pop_positions[ff_idx_1] - self.pop_positions[ff_idx_2])**2))
 
@@ -339,7 +345,19 @@ class HdFireflySimulatedAnnealingOptimizer:
 
     def update_fitness(self, ff_idx_1):
         self.pop_fitness[ff_idx_1] = self.objective_computation(self.pop_positions[ff_idx_1][0], self.pop_positions[ff_idx_1][1], self.pop_positions[ff_idx_1][2])
-    
+        
+    def grow_bsp(self, points, fitness_scores):
+        bsp = BSP(self.bsp_tree, self.dimensions)
+        self.bsp_tree = bsp.grow_tree(points, fitness_scores)
+
+    def finder_tracker_assignments(self, tau):
+        
+        self.finder_positions = np.zeros(np.ceil(self.pop_test*.4), dimensions)
+
+        self.tracker_positions = np.zeros(np.floor(self.pop_test*.6), dimensions)
+
+        for idx in range(self.pop_test):
+
     def optimize(self):
         last_alpha = float('inf')
         maturity_condition = True
