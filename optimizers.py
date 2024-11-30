@@ -66,7 +66,7 @@ class SimulatedAnnealingOptimizer:
 
     def optimize(self):
 
-        print("Beggining Simulated Annealing Optimization"))
+        print("Beggining Simulated Annealing Optimization")
         update_ctr = 0
         curr_energy = self.surface_function(self.curr_pt[0], self.curr_pt[1], self.curr_pt[2])
         for idx in range(self.max_iterations):
