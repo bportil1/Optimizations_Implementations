@@ -32,7 +32,7 @@ class BSP:
                 self.fitness_scores_updated.append(fitness_scores[i])
         
         # Return 5 variables instead of 3
-        return np.array(ahead), np.array(fitness_ahead), np.array(behind), np.array(fitness_behind), np.array(points_on_plane)
+        return ahead, fitness_ahead, behind, fitness_behind, points_on_plane
 
 
     def build_tree(self, points, fitness_scores):
@@ -410,13 +410,14 @@ def select_dividing_plane(points, dimensions):
     The plane is defined by the median point and the normal is aligned
     with the axis of greatest variance in the dataset.
     """
+    print("points: ",  points)
     points = np.array(points)
     variances = np.var(points, axis=0)
     dividing_axis = np.argmax(variances)  # Choose the axis with the greatest variance
     #sorted_points = points[points[:, dividing_axis].argsort()]
-    #print("before sort: ", points)
+    print("before sort: ", points)
     sorted_points = points[np.argsort(points[:, 0])]
-    #print("after sort: ", sorted_points)    
+    print("after sort: ", sorted_points)    
     median_point = sorted_points[len(sorted_points) // 2]
 
     normal = np.zeros(dimensions)
