@@ -2,8 +2,7 @@ import random
 
 # Class for BSP Tree Node
 class BSPNode:
-    def __init__(self, surface_function, position, fitness, left=None, right=None, split_dim=None, split_value=None):
-        self.surface_function = surface_function  # Surface function to evaluate fitness
+    def __init__(self, position, fitness, left=None, right=None, split_dim=None, split_value=None, parent=None):
         self.position = position  # The solution (e.g., [x, f(x)])
         self.fitness = fitness    # Fitness of the solution (f(x))
         self.left = left          # Left child node
@@ -36,11 +35,15 @@ class BSPTree:
             self._insert_recursive(self.root, solution)
 
     def _insert_recursive(self, current_node, solution):
-        # Recursively insert a new solution into the BSP tree
         if current_node.left and current_node.right:
             # Find the dimension (axis) with the largest difference
             dimension = self._find_max_diff_dimension(current_node.left.position, current_node.right.position)
-            
+
+            # Update the split dimension and value if necessary
+            if current_node.split_dim != dimension or current_node.split_value != current_node.position[dimension]:
+                current_node.split_dim = dimension
+                current_node.split_value = current_node.position[dimension]
+
             # Compare the solution with left and right children
             if abs(current_node.left.position[dimension] - solution[0][dimension]) <= abs(current_node.right.position[dimension] - solution[0][dimension]):
                 self._insert_recursive(current_node.left, solution)
@@ -50,8 +53,14 @@ class BSPTree:
             # If the node doesn't have children, insert it
             if not current_node.left:
                 current_node.left = BSPNode(solution[0], solution[1])
+                current_node.left.split_dim = self._find_max_diff_dimension(current_node.position, solution[0])
+                current_node.left.split_value = solution[0][current_node.left.split_dim]
             elif not current_node.right:
                 current_node.right = BSPNode(solution[0], solution[1])
+                current_node.right.split_dim = self._find_max_diff_dimension(current_node.position, solution[0])
+                current_node.right.split_value = solution[0][current_node.right.split_dim]
+
+
 
     def _find_max_diff_dimension(self, left_position, right_position):
         # Find the dimension with the maximum absolute difference between left and right positions
@@ -93,6 +102,7 @@ class BSPTree:
         split_value = current_node.split_value
         
         # Traverse left or right based on the point's position
+        #print("en extract recursive: ", current_node.left, " ", current_node.right, " ", split_dim, " ", split_value)
         if point[split_dim] < split_value:
             return self._extract_recursive(current_node.left, point)
         else:
@@ -125,18 +135,11 @@ class BSPTree:
             in_best_region, region_fitness, region = self.compare_with_neighbors(solution[0])
             if in_best_region:
                 new_fitness = self.surface_function(solution[0][0], solution[0][1], solution[0][2])
-                    if new_fitness < region_fitness:
-                        region.fitness = new_fitness
-                        self.bisect_region(region)
+                if new_fitness < region_fitness:
+                    region.fitness = new_fitness
+                    self.bisect_region(region)
 
     def bisect_region(self, point):
-        """
-        Bisects the best region at the given point in the BSP tree.
-        This splits the region at the node containing the best fitness.
-        
-        :param point: The 3D point [x, y, z] at which to bisect the tree.
-        :return: None
-        """
         region = self.extract_region(point)
         if not region:
             return None
@@ -149,8 +152,8 @@ class BSPTree:
         # Create two new child nodes by splitting the region in the middle
         mid_point = (region.position[split_dim] + split_value) / 2
 
-        left_node = BSPNode(self.surface_function, region.position, region.fitness, split_dim=split_dim, split_value=mid_point, parent=region)
-        right_node = BSPNode(self.surface_function, region.position, region.fitness, split_dim=split_dim, split_value=mid_point, parent=region)
+        left_node = BSPNode(region.position, region.fitness, split_dim=split_dim, split_value=mid_point, parent=region)
+        right_node = BSPNode(region.position, region.fitness, split_dim=split_dim, split_value=mid_point, parent=region)
 
         # Attach the new child nodes to the current region
         region.left = left_node
@@ -159,6 +162,7 @@ class BSPTree:
         # Update the fitness of the new regions
         left_node.update_fitness(region.fitness)
         right_node.update_fitness(region.fitness)
+
 
     def search_and_return_fitness(self, point):
         """
@@ -174,7 +178,7 @@ class BSPTree:
         else:
             return None  
 
-    def initialize_bsp_tree(self, range_start, range_end, num_partitions, surface_function):
+    def initialize_bsp_tree(self, range_start, range_end, num_partitions):
         """
         Initializes the BSP tree by dividing a 3D space into user-defined sub-ranges,
         picking random points from each sub-range, evaluating them with the surface function,
@@ -187,9 +191,13 @@ class BSPTree:
         """
         # Divide each dimension into the specified number of partitions
         partitioned_ranges = []
-        for dim_start, dim_end in zip(range_start, range_end):
+        #print("Ranges: ", range_start, " ", range_end, " ", num_partitions)
+        #print( zip(range(range_start), range(range_end)))
+        for dim_start, dim_end in zip(range(range_start, range_end), range(range_start + 1, range_end + 1)):
+            #print("initializing bsp: ", dim_start, " ", dim_end)
             partitioned_ranges.append([dim_start + (dim_end - dim_start) * i / num_partitions for i in range(num_partitions + 1)])
 
+        #print("Len of pr: ", len(partitioned_ranges))
         # Iterate over the partitioned ranges and pick random points
         for x in range(num_partitions):
             for y in range(num_partitions):
@@ -201,7 +209,7 @@ class BSPTree:
                     point = [rand_x, rand_y, rand_z]
                     
                     # Evaluate the fitness of the point using the surface function
-                    fitness = surface_function(point)
+                    fitness = self.surface_function(point[0], point[1], point[2])
                     
                     # Insert the point into the BSP tree
                     self.insert([point, fitness])
