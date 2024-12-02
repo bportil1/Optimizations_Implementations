@@ -69,18 +69,17 @@ class SimulatedAnnealingOptimizer:
 
     def optimize(self):
 
-        print("Initial Point: ", self.curr_pt)
+        print("Beggining Simulated Annealing Optimization")
         update_ctr = 0
         curr_energy = self.surface_function(self.curr_pt[0], self.curr_pt[1], self.curr_pt[2])
         for idx in range(self.max_iterations):
             new_position = self.solution_transition(self.curr_pt)
             new_energy = self.surface_function(self.curr_pt[0], self.curr_pt[1], self.curr_pt[2])
+            print("Potential New Postition: ", new_position)
+            print("Potential New Postition Error: ", new_energy)
+
             alpha = self.acceptance_probability_computation(curr_energy, new_energy)
-
-            print("Potential New Position: ", new_position)
-            print("Potential New Position Error: ", new_energy)
-            print("Potential New Position Acceptance Probability: ", alpha)
-
+            
             if new_energy < curr_energy: 
                 self.curr_pt = new_position
                 curr_energy = new_energy
@@ -103,7 +102,9 @@ class SimulatedAnnealingOptimizer:
             if self.temperature < self.min_temp or update_ctr == 10:
                 print("Early Convergence, Breaking")
                 break
-
+        
+        print("Final Error: ", curr_energy)
+        print("Final Gamma: ", curr_gamma)
         return  self.curr_pt, curr_energy, self.path
 
     def solution_transition(self, curr_pt):
@@ -372,7 +373,7 @@ class HdFireflySimulatedAnnealingOptimizer:
         self.pop_alpha = self.pop_alpha[indices]
 
     def finder_tracker_assignments(self, tol=.5):
-        print("Reassigning Finder/Trackers Points")
+        print("Reassigning Finder Trackers")
         for idx1 in range(self.pop_test):
             for idx2 in range(self.pop_test):
                 if idx1 != idx2:
@@ -451,6 +452,17 @@ class HdFireflySimulatedAnnealingOptimizer:
                         self.pop_alpha[idx1] = np.abs(min_reg_fitness - new_fitness)
                     if idx1 > 1:
                         alpha_avg = np.average(self.pop_alpha[:idx1])
+                    #if min_reg_fitness == float('inf'):
+                    #    min_reg_fitness = self.pop_fitness[idx1]
+                    if min_reg_fitness == float('inf') or new_fitness == float('inf')
+                        self.pop_alpha[idx1] = 1
+                    #print("min reg_fitness :", min_reg_fitness)
+                    #print("new_fitness: ", new_fitness)
+                    self.pop_alpha[idx1] = np.abs(min_reg_fitness - new_fitness)
+                    #print("New pop alpha agent ", idx1,  " ", self.pop_alpha[idx1])
+                    if idx1 > 1:
+                        alpha_avg = np.average(self.pop_alpha[:idx1])
+                        #print("New Alpha AVG: ", alpha_avg)
                     else:
                         alpha_avg = 1
                     print("Current Alpha Average: ", alpha_avg)
@@ -478,7 +490,6 @@ class HdFireflySimulatedAnnealingOptimizer:
 
         print("Final Hd-FF Min Position: ", hdff_min_position[0])
         print("Final Hd-FF Error: ", hdff_lowest_fitness)
-
         sa = SimulatedAnnealingOptimizer(self.objective_computation, hdff_min_position[0], temperature=5, cooling_rate = .90)
         
         sa_min_pt, sa_min_fitness, sa_path = sa.optimize()
@@ -487,6 +498,7 @@ class HdFireflySimulatedAnnealingOptimizer:
         print("Final SA Error: ", sa_min_fitness)
 
         return hdff_min_position, hdff_lowest_fitness, self.firefly_positions_history, self.fitness_history, self.minima_positions, self.minima_fitness, sa_min_pt, sa_min_fitness, sa_path
+
 
        
 
