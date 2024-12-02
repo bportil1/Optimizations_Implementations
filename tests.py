@@ -38,16 +38,19 @@ class tests():
 
     def hdffsa_test(self):
         hdffsa = HdFireflySimulatedAnnealingOptimizer(self.surface_fcn.ackley, 3, 100)
-        minima, lowest_val, path = hdffsa.optimize()
+        hdff_min_pt, hdff_min_fitness, hdff_positions_history, hdff_fitness_history, hdff_minima_positions, hdff_minima_fitness, sa_min_pt, sa_min_fitness, sa_path = hdffsa.optimize()
 
-        print("Best Position: ", minima)
-        print("Minima :", lowest_val)
+        self.plot_firefly_movements_3d_plotly(hdff_positions_history)
+        #self.plot_error_history(hdff_fitness_history)
 
-        self.annealing_plot(minima, lowest_val, path)
+        print("Best Position: ", sa_min_pt)
+        print("Minima :", sa_min_fitness)
+
+        self.annealing_plot(sa_min_pt, sa_min_fitness, sa_path)
 
     def annealing_plot(self, minima, lowest_val, path):
         x = np.linspace(-50, 50, 1000)
-        y = np.linspace(-600, 50, 1000)
+        y = np.linspace(-600, 25, 1000)
         X, Y = np.meshgrid(x, y)
         Z = self.surface_fcn.ackley(X, Y, 0)  # For simplicity, use z=0 for surface visualization
 
@@ -162,7 +165,84 @@ class tests():
         plt.grid(True)
         plt.legend()
         plt.show()
-            
+           
+    def plot_firefly_movements_3d_plotly(self, firefly_positions_history):
+        x = np.linspace(-50, 50, 1000)
+        y = np.linspace(-600, 25, 1000)
+        X, Y = np.meshgrid(x, y)
+        Z = self.surface_fcn.ackley(X, Y, 0)  # For simplicity, use z=0 for surface visualization
+
+        fig = go.Figure()
+
+
+        fig.add_trace(go.Surface(
+            z=Z,
+            x=X,
+            y=Y,
+            colorscale='Viridis',
+            opacity=0.6,
+            showscale=False
+        ))
+
+
+        iterations = firefly_positions_history.shape[0]
+        num_fireflies = firefly_positions_history.shape[1]
+
+
+        # Plot the trajectory for each firefly in 3D
+        for i in range(num_fireflies):
+            # Extract the positions for this firefly at each iteration
+            firefly_trajectory = firefly_positions_history[:, i, :]
+
+            # Create a 3D line plot for the firefly's trajectory
+            fig.add_trace(go.Scatter3d(
+                x=firefly_trajectory[:, 0],  # X coordinates
+                y=firefly_trajectory[:, 1],  # Y coordinates
+                z=firefly_trajectory[:, 2],  # Z coordinates
+                mode='lines+markers',        # Display both lines and markers
+                name=f'Firefly {i+1}',        # Name for the firefly
+                marker=dict(size=6)          # Marker size for visibility
+            ))
+
+        # Update layout for the plot
+        fig.update_layout(
+            title='Fireflies Movement Over Time (3D)',
+            scene=dict(
+                xaxis_title='X',
+                yaxis_title='Y',
+                zaxis_title='Z'
+            ),
+            showlegend=True
+        )   
+
+        # Show the plot
+        fig.show()
+
+    def plot_error_history(self, fitness_history):
+        # Create a line plot for the fitness history
+        fig = go.Figure()
+
+        # Plot fitness (error) over HDFA iterations
+        fig.add_trace(go.Scatter(
+            x=list(range(len(fitness_history))),  # x-axis: HDFA iterations
+            y=fitness_history,                    # y-axis: fitness (error)
+            mode='lines+markers',                 # Show both line and markers
+            name='Fitness/Error',                 # Name for the plot
+            marker=dict(size=6)                   # Marker size for visibility
+        ))
+
+        # Update layout for the plot
+        fig.update_layout(
+            title='Fitness/Error Over HDFA Iterations',
+            xaxis_title='Iteration',
+            yaxis_title='Fitness/Error',
+            showlegend=True
+        )
+
+        # Show the plot
+        fig.show()
+
+
 if __name__ == "__main__":
     test = tests()
     #test.sa_test()

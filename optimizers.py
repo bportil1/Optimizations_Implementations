@@ -18,6 +18,8 @@ class AdamOptimizer:
         v_curr = np.zeros_like(self.curr_pt)
         s_curr = np.zeros_like(self.curr_pt)
         step = 0
+        min_position = self.curr_pt
+        min_error = float("inf")
 
         for i in range(num_iterations):
             print("Current Iteration: ", str(i+1))
@@ -26,27 +28,28 @@ class AdamOptimizer:
             print("Current Gradient: ", gradient)
 
             v_next = (self.lambda_v * v_curr) + (1 - self.lambda_v)*gradient
-
             s_next = (self.lambda_s * s_curr) + (1 - self.lambda_s)*(gradient**2)
-
             step += 1
-
             corrected_v = v_next / (1 - self.lambda_v**step)
-
             corrected_s = s_next / (1 - self.lambda_s**step)
-
+            
+            print("Current Position: ", self.curr_pt)
             self.curr_pt = self.curr_pt - (alpha*(corrected_v))/(epsilon + np.sqrt(corrected_s))
+            print("Updated Position: ", self.curr_pt)
 
             v_curr = v_next
-
             s_curr = s_next
 
-            path.append((self.curr_pt[0], self.curr_pt[1], self.surface_function(self.curr_pt[0], self.curr_pt[1])))
+            self.path.append((self.curr_pt[0], self.curr_pt[1], self.surface_function(self.curr_pt[0], self.curr_pt[1])))
         
-        return self.path
+            if curr_error <= min_error:
+                min_error = curr_error
+                min_position = self.curr_pt
+
+        return min_position, min_error, self.path
 
 class SimulatedAnnealingOptimizer:
-    def __init__(self, surface_function, curr_pt=None, max_iterations=1000, temperature=10, min_temp=.001, cooling_rate=.9):
+    def __init__(self, surface_function, curr_pt=None, max_iterations=1000, temperature=10, min_temp=.001, cooling_rate=.9, k=.8):
         self.surface_function = surface_function
         self.curr_pt = self.get_initial_pt(curr_pt)
 
@@ -74,14 +77,17 @@ class SimulatedAnnealingOptimizer:
             new_energy = self.surface_function(self.curr_pt[0], self.curr_pt[1], self.curr_pt[2])
             alpha = self.acceptance_probability_computation(curr_energy, new_energy)
 
-            print("Acceptance Probability: ", alpha)
+            print("Potential New Position: ", new_position)
+            print("Potential New Position Error: ", new_energy)
+            print("Potential New Position Acceptance Probability: ", alpha)
 
             if new_energy < curr_energy: 
                 self.curr_pt = new_position
                 curr_energy = new_energy
                 self.path.append((self.curr_pt[0], self.curr_pt[1], self.curr_pt[2], new_energy))
                 update_ctr = 0
-            elif np.random.rand() > alpha:
+            #elif np.random.rand() > alpha:
+            elif np.random.rand() > (1-alpha):            
                 self.curr_pt = new_position
                 curr_energy = new_energy
                 self.path.append((self.curr_pt[0], self.curr_pt[1], self.curr_pt[2], new_energy))
@@ -90,9 +96,12 @@ class SimulatedAnnealingOptimizer:
                 update_ctr += 1
             self.temperature *= self.cooling_rate
 
+            print("Current Position: ", self.curr_pt)
             print("Current Error: ", curr_energy)
             print("Current Temperature: ", self.temperature)
+
             if self.temperature < self.min_temp or update_ctr == 10:
+                print("Early Convergence, Breaking")
                 break
 
         return  self.curr_pt, curr_energy, self.path
@@ -104,8 +113,10 @@ class SimulatedAnnealingOptimizer:
     def acceptance_probability_computation(self, curr_energy, new_energy):
         if new_energy < curr_energy:
             return 1.0
+        elif new_energy == curr_energy:
+            return 0
         else:
-            return np.exp(-((new_energy - curr_energy) / self.temperature) )
+            return np.exp(-((new_energy - curr_energy) / (self.temperature*.8)) )
 
 class ParticleSwarmOptimizer:
     def __init__(self, surface_function, gradient_function, num_particles, dimensions, max_iter, w=0.5, c1=1.5, c2=1.5):
@@ -286,11 +297,6 @@ class SwarmBasedAnnealingOptimizer:
 
             self.provisional_minimum = self.provisional_min_computation()
             print("Provisional Minimum: ", self.provisional_minimum)
-
-            print(self.masses)
-
-            # Print progress
-            print(f"Iteration {iteration}/{self.max_iter}, Best Fitness: {self.global_best_fitness}")
         print("Completed Optimization")
         #min_idx = np.argmin([self.surface_function(self.positions[y][0], self.positions[y][1], self.positions[y][2]) for y in range(self.num_particles)])
         #min_pos = self.positions[min_idx]
@@ -298,7 +304,7 @@ class SwarmBasedAnnealingOptimizer:
         return self.global_best_position, self.global_best_fitness, self.paths, self.values
 
 class HdFireflySimulatedAnnealingOptimizer:
-    def __init__(self, surface_function,  dimensions, pop_test=100, hdfa_iterations=5, gamma=1, alpha=.2): 
+    def __init__(self, surface_function,  dimensions, pop_test=5, hdfa_iterations=5, gamma=1, alpha=.2): 
         self.objective_computation = surface_function
 
         self.pop_test = pop_test 
@@ -307,11 +313,18 @@ class HdFireflySimulatedAnnealingOptimizer:
         self.alpha = alpha
         self.gamma = gamma
 
-        self.pop_positions = self.initialize_positions('initial')
+        self.pop_positions = self.initialize_positions('initial', -200, 200)
         self.pop_attractiveness = np.ones(self.pop_test)
         self.pop_fitness = np.zeros(self.pop_test)
-    
         self.pop_alpha = np.zeros(self.pop_test)
+
+        self.firefly_positions_history = np.zeros((self.hdfa_iterations, self.pop_test, self.dimensions))
+        self.minima_positions = [] 
+        self.minima_fitness = []   
+        self.fitness_history = []  
+
+
+        print("Init Po :", self.pop_positions)
 
         self.initialize_fitness()
 
@@ -324,11 +337,12 @@ class HdFireflySimulatedAnnealingOptimizer:
 
     def initialize_fitness(self):
         for idx in range(self.pop_test):
+            print("Initializing Firefly: ", idx)
             self.pop_fitness[idx] = self.objective_computation(self.pop_positions[idx][0], self.pop_positions[idx][1], self.pop_positions[idx][2])
 
-    def initialize_positions(self, stage):
+    def initialize_positions(self, stage, low=None, high=None):
         if stage == 'initial':
-            return np.random.rand(self.pop_test, self.dimensions)
+            return low + (high - low) * np.random.rand(self.pop_test, self.dimensions)
         elif stage == 'finder_tracker':
             return self.finder_tracker_assignments()    
     
@@ -343,8 +357,8 @@ class HdFireflySimulatedAnnealingOptimizer:
         #attractiveness = self.compute_attractiveness(ff_idx_1, ff_idx_2)
         return self.pop_positions[ff_idx_1] + new_attr * (self.pop_positions[ff_idx_2] - self.pop_positions[ff_idx_1]) + self.alpha*(np.random.rand()-.5)
 
-    def update_fitness(self, ff_idx_1):
-        self.pop_fitness[ff_idx_1] = self.objective_computation(self.pop_positions[ff_idx_1][0], self.pop_positions[ff_idx_1][1], self.pop_positions[ff_idx_1][2])
+    #def update_fitness(self, ff_idx_1):
+        #self.pop_fitness[ff_idx_1] = self.objective_computation(self.pop_positions[ff_idx_1][0],     #self.pop_positions[ff_idx_1][1], self.pop_positions[ff_idx_1][2])
         
     def grow_bsp(self, points, fitness_scores):
         bsp = BSP(self.bsp_tree, self.dimensions)
@@ -358,13 +372,17 @@ class HdFireflySimulatedAnnealingOptimizer:
         self.pop_alpha = self.pop_alpha[indices]
 
     def finder_tracker_assignments(self, tol=.5):
+        print("Reassigning Finder/Trackers Points")
         for idx1 in range(self.pop_test):
             for idx2 in range(self.pop_test):
                 if idx1 != idx2:
                     same_region = self.bsp_tree.same_region_check(self.pop_positions[idx1], self.pop_positions[idx2], tol)
+                    print("Current Indices: ", idx1, " ", idx2)
                     if same_region:
+                        print("in same_region")
                         dist = np.linalg.norm(self.pop_positions[idx1] - self.pop_positions[idx2])
                         if dist < tol:
+                            print("in dist tol")
                             self.sort_ff_data()
                             top_forty_percent = int(np.ceil(self.pop_test*.4))
                             bottom_sixty_percent = int(np.floor(self.pop_test*.6))
@@ -372,53 +390,71 @@ class HdFireflySimulatedAnnealingOptimizer:
                             best_forty_fitness = self.pop_fitness[:top_forty_percent]
                             best_forty_attractiveness = self.pop_attractiveness[:top_forty_percent] 
                             best_forty_alpha = self.pop_alpha[:top_forty_percent]
-                            bottom_sixty_positions = np.random.rand(np.floor(bottom_sixty_percent), self.dimensions)
+                            bottom_sixty_positions = np.random.rand(int(np.floor(bottom_sixty_percent)), self.dimensions)
                             bottom_sixty_attractiveness = np.ones(bottom_sixty_percent)
                             bottom_sixty_fitness = np.zeros(bottom_sixty_percent)
                             bottom_sixty_alpha = np.zeros(bottom_sixty_percent)
 
                             for idx in range(bottom_sixty_percent):
+                                print("reassaining bottom 60")
                                 self.pop_fitness[idx] = self.objective_computation(bottom_sixty_positions[idx][0], bottom_sixty_positions[idx][1], bottom_sixty_positions[idx][2])
                             self.pop_positions = np.concatenate((best_forty_positions, bottom_sixty_positions))
                             self.pop_fitness = np.concatenate((best_forty_fitness, bottom_sixty_fitness)).ravel()
                             self.pop_attractiveness = np.concatenate((best_forty_attractiveness, bottom_sixty_attractiveness)).ravel()
                             self.pop_alpha = np.concatenate((best_forty_alpha, bottom_sixty_alpha))
+                            print("Completed Finder/Tracker Reassignments")
                             return 0
+        print("No Reassignments Needed")
         
     def optimize(self):
+        print("Beggining Hd-Firefly-SA Optimization")
         last_alpha = float('inf')
         maturity_condition = True
         nonincreasing_alpha_counter = 0
         hdfa_ctr = 0
         min_reg_fitness = float('inf')
+        new_fitness = float('inf')
+        best_position = None
+        best_fitness = float('inf')
         while hdfa_ctr < self.hdfa_iterations:
+            print("Current HdFa Iteration: ", hdfa_ctr)
+            iteration_fitness = []
             for idx1 in range(self.pop_test):
                 for idx2 in range(self.pop_test):
                     if self.pop_fitness[idx1] < self.pop_fitness[idx2]:
                         new_attr = self.compute_attractiveness(idx1, idx2)
                         new_position = self.update_position(new_attr, idx1, idx2)                     
-                        in_min_region, min_region, min_reg_fitness, new_graph, min_node, region_points = find_region_with_lowest_fitness(self.objective_computation, self.bsp_tree, new_attr, new_position, self.dimensions)
+                        #in_min_region, min_region, min_reg_fitness, new_graph, min_node, region_points = find_region_with_lowest_fitness(self.objective_computation, self.bsp_tree, new_attr, new_position, self.dimensions)
+                        min_region, min_node, min_reg_fitness, min_node = self.bsp_tree.find_lowest_fitness_region_in_subtree(new_position)
+                        print("Curr Neihboring region: ", min_region)
                         new_fitness = self.objective_computation(min_region[0][0], min_region[0][1], min_region[0][2])
+                        print("new fitness Computation complete")
+                        self.bsp_tree.add_point(new_position, new_fitness)
                         if new_fitness < self.pop_fitness[idx1]:
                             self.pop_fitness[idx1] = new_fitness
                             self.pop_positions[idx1] = new_position
                         print("Potential New Position: ", new_position)
                         print("Potential New Fitness: ", new_fitness)
-                
+           
+                        iteration_fitness.append(self.pop_fitness[idx1])
+
+                        # Check if the current firefly has found a better position (minima)
+                        if self.pop_fitness[idx1] < best_fitness:
+                            best_position = self.pop_positions[idx1]
+                            best_fitness = self.pop_fitness[idx1]
+
+
                 if maturity_condition:
-                    if min_reg_fitness == float('inf'):
-                        min_reg_fitness = self.pop_fitness[idx1]
-                    print("min reg_fitness :", min_reg_fitness)
-                    print("new_fitness: ", new_fitness)
-                    self.pop_alpha[idx1] = np.abs(min_reg_fitness - new_fitness)
-                    print("New pop alpha agent ", idx1,  " ", self.pop_alpha[idx1])
+                    if min_reg_fitness == float('inf') or new_fitness == float('inf'):
+                        self.pop_alpha[idx1] = 1
+                    else:
+                        self.pop_alpha[idx1] = np.abs(min_reg_fitness - new_fitness)
                     if idx1 > 1:
                         alpha_avg = np.average(self.pop_alpha[:idx1])
-                        print("New Alpha AVG: ", alpha_avg)
                     else:
                         alpha_avg = 1
                     print("Current Alpha Average: ", alpha_avg)
-                    if alpha_avg <= 0 or nonincreasing_alpha_counter >= 10:
+                    if alpha_avg <= 0 or nonincreasing_alpha_counter >= 100:
                         break
                     if last_alpha > alpha_avg:  
                         nonincreasing_alpha_counter += 1
@@ -426,21 +462,31 @@ class HdFireflySimulatedAnnealingOptimizer:
                         nonincreasing_alpha_counter = 0
 
                     last_alpha = alpha_avg
+                    print("Current NonIncreasing Alpha Counter: ", nonincreasing_alpha_counter)
             self.finder_tracker_assignments()
+            self.firefly_positions_history[hdfa_ctr] = self.pop_positions.copy()
             hdfa_ctr += 1
-        #print(in_min_region, " ", min_region, " ", min_reg_fitness)
+            print('HDFA Iteration: ', hdfa_ctr)
+            print('Steps Without Increasing Alpha: ', nonincreasing_alpha_counter)
+            self.fitness_history.append(np.min(iteration_fitness))
+            self.minima_positions.append(best_position)
+            self.minima_fitness.append(best_fitness)        
 
-        _, min_position, lowest_fitness = self.bsp_tree.find_lowest_fitness_region()
+            #print(in_min_region, " ", min_region, " ", min_reg_fitness)
 
-        print("Final Min Position: ", min_position[0])
+        _, hdff_min_position, hdff_lowest_fitness = self.bsp_tree.find_lowest_fitness_region()
 
-        print("Final Error: ", lowest_fitness)
+        print("Final Hd-FF Min Position: ", hdff_min_position[0])
+        print("Final Hd-FF Error: ", hdff_lowest_fitness)
 
-        sa = SimulatedAnnealingOptimizer(self.objective_computation, min_position[0], temperature=10, cooling_rate = .95)
+        sa = SimulatedAnnealingOptimizer(self.objective_computation, hdff_min_position[0], temperature=5, cooling_rate = .90)
         
-        min_pt, min_fitness, path = sa.optimize()
+        sa_min_pt, sa_min_fitness, sa_path = sa.optimize()
 
-        return min_pt, min_fitness, path
+        print("Final SA Min Position: ", sa_min_pt)
+        print("Final SA Error: ", sa_min_fitness)
+
+        return hdff_min_position, hdff_lowest_fitness, self.firefly_positions_history, self.fitness_history, self.minima_positions, self.minima_fitness, sa_min_pt, sa_min_fitness, sa_path
 
        
 
