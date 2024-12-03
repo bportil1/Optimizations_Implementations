@@ -14,8 +14,12 @@ class tests():
     def __init__(self):
         self.surface_fcn = Surface()
 
+    def adam_test(self):
+        adam = AdamOptimizer(self.surface_fcn.booth, self.surface_fcn.booth_gradient, alpha=10000000)
+        adam.optimize()
+
     def sa_test(self):
-        sa = SimulatedAnnealingOptimizer(self.surface_fcn.rastrigin )
+        sa = SimulatedAnnealingOptimizer(self.surface_fcn.booth )
         minima, lowest_val, path = sa.optimize()
         
         print("Best Postition: ", minima)
@@ -24,12 +28,12 @@ class tests():
         self.annealing_plot(minima, lowest_val, path)        
 
     def pso_test(self):
-        pso = ParticleSwarmOptimizer(self.surface_fcn.ackley, self.surface_fcn.ackley_gradient, 30, 3, 10) 
+        pso = ParticleSwarmOptimizer(self.surface_fcn.booth, self.surface_fcn.booth_gradient, 3, 3, 10) 
         minima, lowest_val, paths, values = pso.optimize()
         self.swarm_plot(minima, lowest_val, paths, values)
 
     def sba_test(self):
-        sba = SwarmBasedAnnealingOptimizer(self.surface_fcn.booth, self.surface_fcn.booth_gradient, 100, 3, 200)
+        sba = SwarmBasedAnnealingOptimizer(self.surface_fcn.ackley, self.surface_fcn.ackley_gradient, 100, 3, 200)
         minima, lowest_val, paths, values = sba.optimize()
         print("Best Position: ", minima)
         print("Minima: ", lowest_val)
@@ -49,51 +53,8 @@ class tests():
         self.annealing_plot(sa_min_pt, sa_min_fitness, sa_path)
 
     def annealing_plot(self, minima, lowest_val, path):
-        x = np.linspace(-50, 50, 1000)
-        y = np.linspace(-600, 25, 1000)
-        X, Y = np.meshgrid(x, y)
-        Z = self.surface_fcn.ackley(X, Y, 0)  # For simplicity, use z=0 for surface visualization
-
-        # Create a 3D surface plot using Plotly
-        fig = go.Figure()
-
-        # Add surface plot
-        fig.add_trace(go.Surface(
-            z=Z,
-            x=X,
-            y=Y,
-            colorscale='Viridis',
-            opacity=0.6,
-            showscale=False
-        ))
-
-        # Highlight the minimum found
-        fig.add_trace(go.Scatter3d(
-            x=[minima[0]], y=[minima[1]], z=[minima[2]],
-            mode='markers',
-            marker=dict(
-                size=10, color='red', symbol='diamond', line=dict(width=2, color='black')
-            ),
-            name='Global Minimum'
-        ))
-
-        fig.update_layout(
-            title="3D Simulated Annealing",
-            scene=dict(
-                xaxis_title='X Position',
-                yaxis_title='Y Position',
-                zaxis_title='Z Position'
-            ),
-            margin=dict(l=0, r=0, b=0, t=40),
-            showlegend=True
-        )
-
-        # Show the plot
-        fig.show()
-
-    def swarm_plot(self, minima, lowest_val, paths, values, ):
-        x = np.linspace(-100, 100, 1000)
-        y = np.linspace(-100, 100, 1000)
+        x = np.linspace(-5, 5, 100)
+        y = np.linspace(-5, 5, 100)
         X, Y = np.meshgrid(x, y)
         Z = self.surface_fcn.booth(X, Y, 0)  # For simplicity, use z=0 for surface visualization
 
@@ -109,7 +70,60 @@ class tests():
             opacity=0.6,
             showscale=False
         ))
-        '''
+
+        fig.add_trace(go.Scatter3d(
+            x=[point[0] for point in path],
+            y=[point[1] for point in path],
+            z=[point[2] for point in path],
+            mode='markers+lines',
+            marker=dict(size=1, color='red', opacity=0.7),
+            line=dict(width=1, color='red')
+        ))
+
+        # Highlight the minimum found
+        fig.add_trace(go.Scatter3d(
+            x=[minima[0]], y=[minima[1]], z=[minima[2]],
+            mode='markers',
+            marker=dict(
+                size=10, color='blue', symbol='diamond', line=dict(width=2, color='black')
+            ),
+            name='Global Minimum'
+        ))
+
+        fig.update_layout(
+            title="3D Simulated Annealing",
+            scene=dict(
+                xaxis_title='X Position',
+                yaxis_title='Y Position',
+                zaxis_title='Z Position'
+            ),
+            margin=dict(l=0, r=0, b=0, t=40),
+            showlegend=True
+        )
+
+        fig.write_html("sa_optimization_booth.html")
+        # Show the plot
+        fig.show()
+
+    def swarm_plot(self, minima, lowest_val, paths, values, ):
+        x = np.linspace(-100, 100, 1000)
+        y = np.linspace(-100, 100, 1000)
+        X, Y = np.meshgrid(x, y)
+        Z = self.surface_fcn.ackley(X, Y, 0)  # For simplicity, use z=0 for surface visualization
+
+        # Create a 3D surface plot using Plotly
+        fig = go.Figure()
+
+        # Add surface plot
+        fig.add_trace(go.Surface(
+            z=Z,
+            x=X,
+            y=Y
+            colorscale='Viridis',
+            opacity=0.6,
+            showscale=False
+        ))
+        
         color_scale = 'Jet'  # You can change this color scale
         for i, path in enumerate(paths):
             path = np.array(path)
@@ -130,7 +144,7 @@ class tests():
                 line=dict(width=4, colorscale=color_scale),  # Thicker lines
                 name=f'Agent {i} Path'
             ))
-        '''
+        
         # Highlight the minimum found
         fig.add_trace(go.Scatter3d(
             x=[minima[0]], y=[minima[1]], z=[minima[2]],
@@ -142,7 +156,7 @@ class tests():
         ))
 
         fig.update_layout(
-            title="3D Particle Swarm Optimization Paths",
+            title="Particle Swarm Optimization",
             scene=dict(
                 xaxis_title='X Position',
                 yaxis_title='Y Position',
@@ -153,6 +167,7 @@ class tests():
         )
 
         # Show the plot
+        fig.write_html("pso_optimization_booth.html")
         fig.show()
 
         plt.figure(figsize=(8, 6))
@@ -245,7 +260,8 @@ class tests():
 
 if __name__ == "__main__":
     test = tests()
+    #test.adam_test()
     #test.sa_test()
-    #test.pso_test()
+    test.pso_test()
     #test.sba_test()
-    test.hdffsa_test()
+    #test.hdffsa_test()

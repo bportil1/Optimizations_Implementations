@@ -1,8 +1,12 @@
 import numpy as np
 from bsp2 import *
+import math
+import plotly.express as px
+import plotly.graph_objects as go
+
 
 class AdamOptimizer:
-    def __init__(self, surface_function, gradient_function, curr_pt, num_iterations=100, lambda_v=.99, lambda_s=.9999, epsilon=1e10-8, alpha=10):
+    def __init__(self, surface_function, gradient_function, curr_pt=[0,0,0], num_iterations=1000, lambda_v=.99, lambda_s=.9999, epsilon=1e10-8, alpha=10):
         self.surface_function = surface_function
         self.gradient_function = gradient_function
         self.curr_pt = curr_pt
@@ -21,10 +25,10 @@ class AdamOptimizer:
         min_position = self.curr_pt
         min_error = float("inf")
 
-        for i in range(num_iterations):
+        for i in range(self.num_iterations):
             print("Current Iteration: ", str(i+1))
             print("Computing Gradient")
-            gradient = self.gradient_function(self.curr_pt[0], self.curr_pt[1])
+            gradient = self.gradient_function(self.curr_pt[0], self.curr_pt[1], self.curr_pt[2])
             print("Current Gradient: ", gradient)
 
             v_next = (self.lambda_v * v_curr) + (1 - self.lambda_v)*gradient
@@ -34,19 +38,73 @@ class AdamOptimizer:
             corrected_s = s_next / (1 - self.lambda_s**step)
             
             print("Current Position: ", self.curr_pt)
-            self.curr_pt = self.curr_pt - (alpha*(corrected_v))/(epsilon + np.sqrt(corrected_s))
+            self.curr_pt = self.curr_pt - (self.alpha*(corrected_v))/(self.epsilon + np.sqrt(corrected_s))
             print("Updated Position: ", self.curr_pt)
+            curr_error = self.surface_function(self.curr_pt[0], self.curr_pt[1], self.curr_pt[2])
 
             v_curr = v_next
             s_curr = s_next
 
-            self.path.append((self.curr_pt[0], self.curr_pt[1], self.surface_function(self.curr_pt[0], self.curr_pt[1])))
+            self.path.append((self.curr_pt[0], self.curr_pt[1], self.curr_pt[2], self.surface_function(self.curr_pt[0], self.curr_pt[1], self.curr_pt[2])))
         
             if curr_error <= min_error:
                 min_error = curr_error
                 min_position = self.curr_pt
-
+		
+        print("ADAM Final Error: ", min_error)
+        print("ADAM Final Position: ", min_position)
+        self.plot(self.path, min_position)
         return min_position, min_error, self.path
+
+    def plot(self, path, min_position):
+        # Prepare the surface for plotting
+        x_vals = np.linspace(-5, 5, 100)
+        y_vals = np.linspace(-5, 5, 100)
+        x_grid, y_grid = np.meshgrid(x_vals, y_vals)
+        z_vals = np.vectorize(lambda x, y: self.surface_function(x, y, 0))(x_grid, y_grid)
+
+        # Create 3D surface plot
+        fig = go.Figure(data=[go.Surface(z=z_vals, x=x_grid, y=y_grid, colorscale='Viridis', opacity=0.8)])
+
+        # Plot the optimization path
+        path_x = [point[0] for point in path]
+        path_y = [point[1] for point in path]
+        path_z = [point[3] for point in path]  # z values are the function values at each point
+
+        fig.add_trace(go.Scatter3d(
+            x=path_x, 
+            y=path_y, 
+            z=path_z, 
+            mode='markers+lines', 
+            marker=dict(size=1, color='red', opacity=0.7), 
+            line=dict(width=1, color='red')
+        ))
+        '''
+        # Mark the minima with a label
+        fig.add_trace(go.Scatter3d(
+            x=[min_position[0]],
+            y=[min_position[1]],
+            z=[self.surface_function(min_position[0], min_position[1], min_position[2])],
+            mode='markers+text',
+            marker=dict(size=10, color='green'),
+            text=['Minimum'],
+            textposition='top center'
+        ))
+	'''
+        # Labels and layout
+        fig.update_layout(
+            title="Adam Optimizer",
+            scene=dict(
+                xaxis_title='X Axis',
+                yaxis_title='Y Axis',
+                zaxis_title='Error',
+            ),
+            autosize=True
+        )
+
+        # Save the figure to an HTML file
+        fig.write_html("adam_optimization_booth.html")
+        fig.show()
 
 class SimulatedAnnealingOptimizer:
     def __init__(self, surface_function, curr_pt=None, max_iterations=1000, temperature=10, min_temp=.001, cooling_rate=.9, k=.8):
