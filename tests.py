@@ -28,7 +28,7 @@ class tests():
         self.annealing_plot(minima, lowest_val, path)        
 
     def pso_test(self):
-        pso = ParticleSwarmOptimizer(self.surface_fcn.booth, self.surface_fcn.booth_gradient, 3, 3, 10) 
+        pso = ParticleSwarmOptimizer(self.surface_fcn.ackley, self.surface_fcn.ackley_gradient, 100, 3, 1000) 
         minima, lowest_val, paths, values = pso.optimize()
         self.swarm_plot(minima, lowest_val, paths, values)
 
@@ -45,7 +45,7 @@ class tests():
         hdff_min_pt, hdff_min_fitness, hdff_positions_history, hdff_fitness_history, hdff_minima_positions, hdff_minima_fitness, sa_min_pt, sa_min_fitness, sa_path = hdffsa.optimize()
 
         self.plot_firefly_movements_3d_plotly(hdff_positions_history)
-        #self.plot_error_history(hdff_fitness_history)
+        self.plot_error_history(hdff_fitness_history)
 
         print("Best Position: ", sa_min_pt)
         print("Minima :", sa_min_fitness)
@@ -53,10 +53,10 @@ class tests():
         self.annealing_plot(sa_min_pt, sa_min_fitness, sa_path)
 
     def annealing_plot(self, minima, lowest_val, path):
-        x = np.linspace(-5, 5, 100)
-        y = np.linspace(-5, 5, 100)
+        x = np.linspace(-5, 5, 1000)
+        y = np.linspace(-5, 5, 1000)
         X, Y = np.meshgrid(x, y)
-        Z = self.surface_fcn.booth(X, Y, 0)  # For simplicity, use z=0 for surface visualization
+        Z = self.surface_fcn.ackley(X, Y, 0)  # For simplicity, use z=0 for surface visualization
 
         # Create a 3D surface plot using Plotly
         fig = go.Figure()
@@ -91,7 +91,7 @@ class tests():
         ))
 
         fig.update_layout(
-            title="3D Simulated Annealing",
+            title="Hd-FFSA Optimization",
             scene=dict(
                 xaxis_title='X Position',
                 yaxis_title='Y Position',
@@ -118,12 +118,13 @@ class tests():
         fig.add_trace(go.Surface(
             z=Z,
             x=X,
-            y=Y
+            y=Y,
             colorscale='Viridis',
             opacity=0.6,
             showscale=False
         ))
-        
+       
+        '''
         color_scale = 'Jet'  # You can change this color scale
         for i, path in enumerate(paths):
             path = np.array(path)
@@ -136,27 +137,27 @@ class tests():
                 mode='markers+lines',
                 marker=dict(
                     size=5,
-                    color=colors,  # Color the path steps from start to end
-                    colorscale=color_scale,  # Define color scale
+                    #color=colors,  # Color the path steps from start to end
+                    #colorscale=color_scale,  # Define color scale
                     cmin=0, cmax=1,
                     line=dict(width=2)
                 ),
                 line=dict(width=4, colorscale=color_scale),  # Thicker lines
                 name=f'Agent {i} Path'
             ))
-        
+            '''
         # Highlight the minimum found
         fig.add_trace(go.Scatter3d(
             x=[minima[0]], y=[minima[1]], z=[minima[2]],
             mode='markers',
             marker=dict(
-                size=10, color='red', symbol='diamond', line=dict(width=2, color='black')
+                size=10, color='blue', symbol='diamond', line=dict(width=2, color='black')
             ),
             name='Global Minimum'
         ))
 
         fig.update_layout(
-            title="Particle Swarm Optimization",
+            title="Swarm-based Simulated Annealing Optimization",
             scene=dict(
                 xaxis_title='X Position',
                 yaxis_title='Y Position',
@@ -167,7 +168,7 @@ class tests():
         )
 
         # Show the plot
-        fig.write_html("pso_optimization_booth.html")
+        fig.write_html("sba_optimization_ackley.html")
         fig.show()
 
         plt.figure(figsize=(8, 6))
@@ -185,7 +186,7 @@ class tests():
         x = np.linspace(-50, 50, 1000)
         y = np.linspace(-600, 25, 1000)
         X, Y = np.meshgrid(x, y)
-        Z = self.surface_fcn.ackley(X, Y, 0)  # For simplicity, use z=0 for surface visualization
+        Z = self.surface_fcn.booth(X, Y, 0)  # For simplicity, use z=0 for surface visualization
 
         fig = go.Figure()
 
@@ -229,7 +230,7 @@ class tests():
             ),
             showlegend=True
         )   
-
+        fig.write_html("hdffsa_optimization_ackley.html")
         # Show the plot
         fig.show()
 
@@ -262,6 +263,6 @@ if __name__ == "__main__":
     test = tests()
     #test.adam_test()
     #test.sa_test()
-    test.pso_test()
+    #test.pso_test()
     #test.sba_test()
-    #test.hdffsa_test()
+    test.hdffsa_test()
