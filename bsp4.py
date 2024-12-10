@@ -16,7 +16,7 @@ class BSPNode:
     def update_fitness(self, new_fitness):
         """Method to update the fitness of the node dynamically."""
         # For example, use the size of the region to update fitness (this is just an example).
-        x_min, y_min, z_min, x_max, y_max, z_max = self.bounds
+        #x_min, y_min, z_min, x_max, y_max, z_max = self.bounds
         #volume = (x_max - x_min) * (y_max - y_min) * (z_max - z_min)
         self.fitness = new_fitness  #1 / (volume + 1)  # Smaller volumes get higher fitness values
         if self.parent:

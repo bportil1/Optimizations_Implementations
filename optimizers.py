@@ -3,7 +3,9 @@ from bsp4 import *
 import math
 import plotly.express as px
 import plotly.graph_objects as go
+import sys
 
+sys.setrecursionlimit(3000)
 
 class AdamOptimizer:
     def __init__(self, surface_function, gradient_function, curr_pt=[0,0,0], num_iterations=1000, lambda_v=.99, lambda_s=.9999, epsilon=1e10-8, alpha=10):
@@ -106,9 +108,10 @@ class AdamOptimizer:
         fig.write_html("adam_optimization_booth.html")
         fig.show()
 
+#fix this, changed it to ctsp specific
 class SimulatedAnnealingOptimizer:
-    def __init__(self, surface_function, curr_pt=None, init_error=None, max_iterations=1000, temperature=10, min_temp=.001, cooling_rate=.90, k=1):
-        self.surface_function = surface_function
+    def __init__(self, ctsp_obj, curr_pt=None, init_error=None, max_iterations=1000, temperature=10, min_temp=.001, cooling_rate=.90, k=1):
+        self.ctsp_obj = ctsp_obj
         self.curr_pt = self.get_initial_pt(curr_pt)
         self.init_error = init_error
 
@@ -120,7 +123,7 @@ class SimulatedAnnealingOptimizer:
 
     def get_initial_pt(self, curr_pt):
         if not isinstance(curr_pt, np.ndarray):
-            curr_pt = [0,0,0]
+            curr_pt = np.zeros(len(self.ctsp_obj.num_cities))
         else:
             curr_pt = curr_pt
         
@@ -133,10 +136,10 @@ class SimulatedAnnealingOptimizer:
         if self.init_error != None:
             curr_energy = self.init_error
         else:
-            curr_energy = self.surface_function(self.curr_pt[0], self.curr_pt[1], self.curr_pt[2])
+            curr_energy = self.ctsp_obj.total_distance(self.curr_pt)
         for idx in range(self.max_iterations):
             new_position = self.solution_transition(self.curr_pt)
-            new_energy = self.surface_function(new_position[0], new_position[1], new_position[2])
+            new_energy = self.ctsp_obj.total_distance(new_position)
             print("Potential New Postition: ", new_position)
             print("Potential New Postition Error: ", new_energy)
 
@@ -145,13 +148,13 @@ class SimulatedAnnealingOptimizer:
             if new_energy < curr_energy: 
                 self.curr_pt = new_position
                 curr_energy = new_energy
-                self.path.append((self.curr_pt[0], self.curr_pt[1], self.curr_pt[2], new_energy))
+                #self.path.append((self.curr_pt[0], self.curr_pt[1], self.curr_pt[2], new_energy))
                 update_ctr = 0
             #elif np.random.rand() > alpha:
             elif np.random.rand() > (1-alpha):            
                 self.curr_pt = new_position
                 curr_energy = new_energy
-                self.path.append((self.curr_pt[0], self.curr_pt[1], self.curr_pt[2], new_energy))
+                #self.path.append((self.curr_pt[0], self.curr_pt[1], self.curr_pt[2], new_energy))
                 update_ctr = 0
             else:
                 update_ctr += 1
@@ -170,9 +173,15 @@ class SimulatedAnnealingOptimizer:
         return  self.curr_pt, curr_energy, self.path
 
 
-    def solution_transition(self, curr_pt):
-        new_position = curr_pt + np.random.normal(0, self.temperature, size = len(curr_pt))
+    def solution_transition(self, tour):
+        new_position = tour.copy()
+        i, j = random.sample(range(len(tour)), 2)
+        new_position[i], new_position[j] = new_position[j], new_position[i]
+        #new_position = np.random.permutation(len(tour)) 
+        print(i, j)
+        print(new_position)
         return new_position
+
 
     def acceptance_probability_computation(self, curr_energy, new_energy):
         if new_energy < curr_energy:

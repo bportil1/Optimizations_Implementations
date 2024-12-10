@@ -5,7 +5,7 @@ from numpy import isclose
 import math
 
 from optimization_functions import *
-from optimizers import *
+from optimizers_tsp import *
 
 import plotly.express as px
 import plotly.graph_objects as go
